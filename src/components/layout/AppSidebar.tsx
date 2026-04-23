@@ -1,121 +1,442 @@
+import { useContext, useMemo, useState } from "react";
 import {
-  LayoutDashboard, Briefcase, Users, CalendarCheck, UserPlus, Building2,
-  Shield, UserCheck, Wallet, CalendarDays, BarChart3, Settings, LogOut, Mail,
+  LayoutDashboard, User2, User, NotebookPen, BookCopy, ListChecks, ListCheck,
+  BookOpen, Info, GraduationCap, FileEdit, TableProperties, CheckCheck,
+  Laptop, Laptop2, Disc3, ReceiptText, AlarmClock, Pencil, Settings, LogOut,
+  ChevronRight,
+  ChevronDown,
+  Upload,
+  MessageSquareText,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
-import { useAuth, roleAccess } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { SessionContext } from "@/contexts/SessionContext";
+import useFetch from "@/hooks/useFetch";
 import logo from "@/assets/logo.png";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
-  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarHeader, SidebarFooter, useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
+  useSidebar, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-const navGroups = [
-  {
-    label: "Main",
-    items: [
-      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, key: "dashboard" },
-      { title: "Inbox", url: "/inbox", icon: Mail, key: "inbox" },
-    ],
-  },
-  {
-    label: "Recruitment",
-    items: [
-      { title: "Recruitment", url: "/recruitment", icon: Briefcase, key: "recruitment" },
-      { title: "Candidates", url: "/candidates", icon: Users, key: "candidates" },
-      { title: "Interviews", url: "/interviews", icon: CalendarCheck, key: "interviews" },
-      { title: "Onboarding", url: "/onboarding", icon: UserPlus, key: "onboarding" },
-    ],
-  },
-  {
-    label: "Staff",
-    items: [
-      { title: "Employees", url: "/employees", icon: Users, key: "employees" },
-      { title: "Departments", url: "/departments", icon: Building2, key: "departments" },
-      { title: "Roles & Permissions", url: "/roles", icon: Shield, key: "roles" },
-      { title: "Guarantors", url: "/guarantors", icon: UserCheck, key: "guarantors" },
-    ],
-  },
-  {
-    label: "Operations",
-    items: [
-      { title: "Payroll", url: "/payroll", icon: Wallet, key: "payroll" },
-      { title: "Leave Management", url: "/leave", icon: CalendarDays, key: "leave" },
-    ],
-  },
-  {
-    label: "System",
-    items: [
-      { title: "Reports", url: "/reports", icon: BarChart3, key: "reports" },
-      { title: "Settings", url: "/settings", icon: Settings, key: "settings" },
-    ],
-  },
-];
+// ── helpers ──────────────────────────────────────────────────────────────────
+const className = (c: any) => String(c?.name || c?.className || "");
+// Use name string (not _id) — backend routes expect class name, e.g. "JS1"
+const classId   = (c: any) => String(c?.name || c?.className || "");
 
+// ── nav builders ─────────────────────────────────────────────────────────────
+function buildAdminNav(classes: any[]) {
+  const classSubItems = classes.length > 0
+    ? classes.map((c) => ({ title: className(c), url: `/student/information/${classId(c)}` }))
+    : [
+        { title: "Class J.S.1", url: "/student/information/js1" },
+        { title: "Class J.S.2", url: "/student/information/js2" },
+        { title: "Class J.S.3", url: "/student/information/js3" },
+        { title: "Class S.S.1", url: "/student/information/ss1" },
+        { title: "Class S.S.2", url: "/student/information/ss2" },
+        { title: "Class S.S.3", url: "/student/information/ss3" },
+      ];
+
+  const subjectSubItems = classes.length > 0
+    ? classes.map((c) => ({ title: className(c), url: `/subject/${classId(c)}` }))
+    : [
+        { title: "Class J.S.1", url: "/subject/js1" },
+        { title: "Class J.S.2", url: "/subject/js2" },
+        { title: "Class J.S.3", url: "/subject/js3" },
+        { title: "Class S.S.1", url: "/subject/ss1" },
+        { title: "Class S.S.2", url: "/subject/ss2" },
+        { title: "Class S.S.3", url: "/subject/ss3" },
+      ];
+
+  return [
+    {
+      label: "Main",
+      items: [
+        { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, key: "dashboard" },
+        { title: "Admin", url: "/admin", icon: User2, key: "admin" },
+      ],
+    },
+    {
+      label: "Student",
+      items: [
+        { title: "Admit Student", url: "/student/admit", icon: User, key: "admit-student" },
+        { title: "Bulk Upload", url: "/student/bulk-upload", icon: Upload, key: "bulk-student-upload" },
+        { title: "Student Information", icon: NotebookPen, key: "student-info", subItems: classSubItems },
+        { title: "Student Promotion", url: "/student/promotion", icon: BookCopy, key: "student-promotion" },
+      ],
+    },
+    {
+      label: "Affective Psychomotor",
+      items: [
+        { title: "Manage Category", url: "/psycho/category", icon: ListChecks, key: "psycho-category" },
+        { title: "Student Report", url: "/psycho/stu-report", icon: ListCheck, key: "psycho-report" },
+      ],
+    },
+    {
+      label: "Teacher",
+      items: [{ title: "Teachers", url: "/teacher", icon: User, key: "teacher" }],
+    },
+    {
+      label: "Parents",
+      items: [{ title: "Parents", url: "/parents", icon: User, key: "parents" }],
+    },
+    {
+      label: "Notice Board",
+      items: [{ title: "Noticeboard", url: "/notices", icon: Info, key: "notice" }],
+    },
+    {
+      label: "Class",
+      items: [
+        { title: "Manage Class", url: "/class/manage", icon: GraduationCap, key: "class" },
+        { title: "Academic Syllabus", url: "/class/syllabus", icon: GraduationCap, key: "class" },
+      ],
+    },
+    {
+      label: "Subjects",
+      items: [
+        { title: "Subject by Class", icon: BookOpen, key: "subject", subItems: subjectSubItems },
+      ],
+    },
+    {
+      label: "Exam",
+      items: [
+        { title: "Exam List", url: "/exam/list", icon: ListChecks, key: "exam-list" },
+        { title: "Exam Grades", url: "/exam/grades", icon: GraduationCap, key: "exam-grades" },
+        { title: "Manage Marks", url: "/exam/manage-marks", icon: FileEdit, key: "manage-marks" },
+        { title: "Tabulation Sheet", url: "/exam/tabulation", icon: TableProperties, key: "tabulation" },
+        { title: "On Screen Marking", url: "/exam/onscreenmarking", icon: CheckCheck, key: "onscreen-marking" },
+      ],
+    },
+    {
+      label: "Online Exam",
+      items: [
+        { title: "Create Online Exam", url: "/onlineexam/create", icon: Laptop, key: "onlinexam" },
+        { title: "Manage Online Exam", url: "/onlineexam/manage", icon: Laptop2, key: "onlinexam" },
+      ],
+    },
+    {
+      label: "AI Tools",
+      items: [
+        { title: "Curriculum Generator", url: "/curriculum", icon: Disc3, key: "curriculum" },
+        { title: "Generate Questions", url: "/gen-questions", icon: Disc3, key: "gen-questions" },
+      ],
+    },
+    {
+      label: "Past Questions",
+      items: [
+        { title: "UTME", url: "https://cbt.edupro.com.ng/login", icon: Disc3, key: "past-questions" },
+        { title: "WAEC", url: "https://cbt.edupro.com.ng/login", icon: Disc3, key: "past-questions" },
+      ],
+    },
+    {
+      label: "Accounting",
+      items: [
+        { title: "Student Receipt", url: "/stu-receipt", icon: ReceiptText, key: "studentAccounting" },
+        { title: "Student Payments", url: "/stu-payments", icon: ReceiptText, key: "studentAccounting" },
+      ],
+    },
+    {
+      label: "Study Material",
+      items: [{ title: "Study Material", url: "/studymaterial", icon: Disc3, key: "studymaterial" }],
+    },
+    {
+      label: "Daily Attendance",
+      items: [{ title: "Daily Attendance", url: "/dailyattend", icon: AlarmClock, key: "dailyattend" }],
+    },
+    {
+      label: "System",
+      items: [
+        { title: "Profile", url: "/profile", icon: User2, key: "settings" },
+        { title: "Settings", url: "/settings", icon: Settings, key: "settings" },
+        { title: "Account", url: "/account", icon: Pencil, key: "settings" },
+      ],
+    },
+  ];
+}
+
+function buildTeacherNav(classes: any[]) {
+  const classSubItems = classes.length > 0
+    ? classes.map((c) => ({ title: className(c), url: `/teacher/dashboard/student-information/${classId(c)}` }))
+    : [
+        { title: "Class J.S.1", url: "/teacher/dashboard/student-information/js1" },
+        { title: "Class J.S.2", url: "/teacher/dashboard/student-information/js2" },
+        { title: "Class J.S.3", url: "/teacher/dashboard/student-information/js3" },
+        { title: "Class S.S.1", url: "/teacher/dashboard/student-information/ss1" },
+        { title: "Class S.S.2", url: "/teacher/dashboard/student-information/ss2" },
+        { title: "Class S.S.3", url: "/teacher/dashboard/student-information/ss3" },
+      ];
+
+  const subjectSubItems = classes.length > 0
+    ? classes.map((c) => ({ title: className(c), url: `/teacher/dashboard/subject/${classId(c)}` }))
+    : [
+        { title: "Class J.S.1", url: "/teacher/dashboard/subject/js1" },
+        { title: "Class J.S.2", url: "/teacher/dashboard/subject/js2" },
+        { title: "Class J.S.3", url: "/teacher/dashboard/subject/js3" },
+        { title: "Class S.S.1", url: "/teacher/dashboard/subject/ss1" },
+        { title: "Class S.S.2", url: "/teacher/dashboard/subject/ss2" },
+        { title: "Class S.S.3", url: "/teacher/dashboard/subject/ss3" },
+      ];
+
+  return [
+    {
+      label: "Teacher Menu",
+      items: [
+        { title: "Dashboard", url: "/teacher/dashboard", icon: LayoutDashboard, key: "teacher-dashboard" },
+      ],
+    },
+    {
+      label: "Students",
+      items: [
+        { title: "Student Information", icon: NotebookPen, key: "teacher-student-info", subItems: classSubItems },
+      ],
+    },
+    {
+      label: "Subjects",
+      items: [
+        { title: "Subject by Class", icon: BookOpen, key: "teacher-subjects", subItems: subjectSubItems },
+      ],
+    },
+    {
+      label: "Affective Psychomotor",
+      items: [
+        { title: "Student Report", url: "/psycho/stu-report", icon: ListCheck, key: "psycho-report" },
+      ],
+    },
+    {
+      label: "Exam",
+      items: [
+        { title: "Manage Marks", url: "/teacher/dashboard/manage-mark-view", icon: FileEdit, key: "manage-marks" },
+        { title: "Tabulation Sheet", url: "/dashboard/tabulation-sheet", icon: TableProperties, key: "tabulation" },
+        { title: "On Screen Marking", url: "/exam/onscreenmarking", icon: CheckCheck, key: "onscreen-marking" },
+      ],
+    },
+    {
+      label: "Online Exam",
+      items: [
+        { title: "Create Online Exam", url: "/dashboard/online-exam", icon: Laptop, key: "onlinexam" },
+        { title: "Manage Online Exam", url: "/dashboard/manage-online-exam", icon: Laptop2, key: "onlinexam" },
+      ],
+    },
+    {
+      label: "Notice Board",
+      items: [{ title: "Noticeboard", url: "/notices", icon: Info, key: "notice" }],
+    },
+    {
+      label: "Material & Attendance",
+      items: [
+        { title: "Study Material", url: "/studymaterial", icon: Disc3, key: "studymaterial" },
+        { title: "Homework Review", url: "/teacher/dashboard/homework", icon: MessageSquareText, key: "homework" },
+        { title: "Daily Attendance", url: "/dailyattend", icon: AlarmClock, key: "dailyattend" },
+      ],
+    },
+    {
+      label: "System",
+      items: [
+        { title: "Profile", url: "/dashboard/profile", icon: User2, key: "settings" },
+      ],
+    },
+  ];
+}
+
+function buildStudentNav(_classes: any[]) {
+  return [
+    {
+      label: "Student Menu",
+      items: [
+        { title: "Dashboard", url: "/student/dashboard/default", icon: LayoutDashboard, key: "student-dashboard" },
+        { title: "Teachers", url: "/student/dashboard/teacher", icon: User, key: "teacher" },
+        { title: "Subjects", url: "/student/dashboard/subject", icon: BookOpen, key: "subject" },
+      ],
+    },
+    {
+      label: "Class Information",
+      items: [
+        { title: "My Class", url: "/student/dashboard/my-class", icon: NotebookPen, key: "student-info" },
+      ],
+    },
+    {
+      label: "Exam & Results",
+      items: [
+        { title: "Exam List", url: "/student/dashboard/examlist", icon: ListChecks, key: "exam-list" },
+        { title: "My Results", url: "/student/dashboard/student_mark_sheet", icon: GraduationCap, key: "student-dashboard" },
+      ],
+    },
+    {
+      label: "Online Exam",
+      items: [
+        { title: "Take Online Exam", url: "/student/dashboard/manage-online-exam", icon: Laptop, key: "onlinexam" },
+        { title: "Past Questions (JAMB)", url: "/student/dashboard/jamb-past-questions", icon: Disc3, key: "onlinexam" },
+      ],
+    },
+    {
+      label: "Payments & Materials",
+      items: [
+        { title: "Payment History", url: "/student/dashboard/student-payment", icon: ReceiptText, key: "studentAccounting" },
+        { title: "Study Material", url: "/student/dashboard/student-material", icon: BookCopy, key: "studymaterial" },
+        { title: "Homework", url: "/student/dashboard/homework", icon: MessageSquareText, key: "homework" },
+      ],
+    },
+    {
+      label: "Notice Board",
+      items: [{ title: "Noticeboard", url: "/student/dashboard/notices", icon: Info, key: "notice" }],
+    },
+    {
+      label: "System",
+      items: [
+        { title: "Profile", url: "/student/dashboard/profile", icon: User2, key: "settings" },
+      ],
+    },
+  ];
+}
+
+function buildParentNav() {
+  return [
+    {
+      label: "Parent Menu",
+      items: [
+        { title: "Dashboard", url: "/parent/dashboard", icon: LayoutDashboard, key: "dashboard" },
+        { title: "Ward Results", url: "/parent/dashboard/results", icon: GraduationCap, key: "parent-results" },
+        { title: "Ward Materials", url: "/parent/dashboard/materials", icon: BookCopy, key: "parent-materials" },
+        { title: "Ward Homework", url: "/parent/dashboard/homework", icon: MessageSquareText, key: "parent-homework" },
+      ],
+    },
+  ];
+}
+
+// ── component ─────────────────────────────────────────────────────────────────
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { user, logout, messages } = useAuth();
+  const { user, logout } = useAuth();
+  const { currentSession } = useContext(SessionContext);
+
+  const { data: rawClasses } = useFetch(
+    currentSession?._id ? `/class/${currentSession._id}` : null
+  );
+  const classes = useMemo(
+    () => Array.isArray(rawClasses)
+      ? [...rawClasses].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
+      : [],
+    [rawClasses]
+  );
+
+  const nav = useMemo(() => {
+    switch (user?.role) {
+      case "teacher": return buildTeacherNav(classes);
+      case "student": return buildStudentNav(classes);
+      case "parent": return buildParentNav();
+      default:        return buildAdminNav(classes);
+    }
+  }, [user?.role, classes]);
+
   const currentPath = location.pathname;
-  const allowedKeys = user ? roleAccess[user.role] : [];
-  const unreadMessages = messages.filter((m) => m.type === "inbox" && !m.read).length;
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const isGroupOpen = (label: string) => openGroups[label] ?? false;
+  const toggleGroup = (label: string) => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      [label]: !(prev[label] ?? true),
+    }));
+  };
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="Target Pathology" className="h-10 w-10 rounded object-contain" />
+          <img src={logo} alt="EduPro" className="h-10 w-10 rounded object-contain" />
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-sidebar-foreground leading-tight">Target Pathology</span>
-              <span className="text-[10px] text-muted-foreground">HR Module</span>
+              <span className="text-sm font-bold text-sidebar-foreground leading-tight">
+                EDANA Schools
+              </span>
+              <span className="text-[10px] text-white">
+                edanamonteschools@gmail.com
+              </span>
             </div>
           )}
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="py-2">
-        {navGroups.map((group) => {
-          const visibleItems = group.items.filter((item) => allowedKeys.includes(item.key));
-          if (visibleItems.length === 0) return null;
-          return (
-            <SidebarGroup key={group.label}>
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-muted-foreground/70 px-4">
-                {group.label}
+      <SidebarContent className="py-2 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-200 hover:[&::-webkit-scrollbar-thumb]:bg-slate-300">
+        {nav.map((group) => (
+          <SidebarGroup key={group.label}>
+            <Collapsible open={collapsed ? false : isGroupOpen(group.label)} onOpenChange={() => toggleGroup(group.label)}>
+              <SidebarGroupLabel asChild className="px-2">
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 py-2 text-[10px] uppercase tracking-wider text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-white">
+                  <span>{group.label}</span>
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
               </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {visibleItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild isActive={currentPath === item.url}>
-                        <NavLink to={item.url} end className="hover:bg-sidebar-accent" activeClassName="bg-sidebar-accent text-primary font-medium">
-                          <item.icon className="mr-2 h-4 w-4" />
-                          {!collapsed && (
-                            <span className="flex items-center gap-2">
-                              {item.title}
-                              {item.key === "inbox" && unreadMessages > 0 && (
-                                <Badge variant="default" className="h-4 px-1.5 text-[10px]">{unreadMessages}</Badge>
-                              )}
-                            </span>
-                          )}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          );
-        })}
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.items.map((item) => {
+                      if ("subItems" in item && item.subItems) {
+                        return (
+                          <Collapsible key={item.title} asChild className="group/collapsible">
+                            <SidebarMenuItem>
+                              <CollapsibleTrigger asChild>
+                                <SidebarMenuButton tooltip={item.title}>
+                                  <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                                  <span>{item.title}</span>
+                                  <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                </SidebarMenuButton>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <SidebarMenuSub>
+                                  {item.subItems.map((sub) => (
+                                    <SidebarMenuSubItem key={sub.title}>
+                                      <SidebarMenuSubButton asChild isActive={currentPath === sub.url}>
+                                        <NavLink to={sub.url}>{sub.title}</NavLink>
+                                      </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                  ))}
+                                </SidebarMenuSub>
+                              </CollapsibleContent>
+                            </SidebarMenuItem>
+                          </Collapsible>
+                        );
+                      }
+
+                      const url = (item as any).url as string;
+                      const isExternal = url?.startsWith("http");
+
+                      return (
+                        <SidebarMenuItem key={item.title}>
+                          <SidebarMenuButton asChild isActive={currentPath === url}>
+                            {isExternal ? (
+                              <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center hover:bg-sidebar-accent">
+                                <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                                {!collapsed && <span>{item.title}</span>}
+                              </a>
+                            ) : (
+                              <NavLink to={url} end activeClassName="bg-sidebar-accent text-white font-medium" className="hover:bg-sidebar-accent">
+                                <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                                {!collapsed && <span>{item.title}</span>}
+                              </NavLink>
+                            )}
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
-        <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-destructive" onClick={logout}>
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-white hover:bg-sidebar-accent hover:text-white"
+          onClick={logout}>
           <LogOut className="mr-2 h-4 w-4" />
           {!collapsed && <span>Logout</span>}
         </Button>

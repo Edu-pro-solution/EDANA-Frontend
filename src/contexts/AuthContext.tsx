@@ -1,14 +1,20 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useReducer, ReactNode } from "react";
+import axios from "axios";
 
-export type UserRole = "hr_admin" | "department_head" | "finance" | "finance_manager" | "accountant" | "sales_marketer";
+// ---------- Types ----------
+export type UserRole = "admin" | "teacher" | "student" | "parent";
 
 export interface User {
   id: string;
-  name: string;
+  _id?: string;
+  name?: string;
+  username?: string;
   email: string;
   role: UserRole;
   avatar?: string;
   department?: string;
+  phone?: string;
+  address?: string;
 }
 
 export interface Notification {
@@ -31,12 +37,16 @@ export interface Message {
   type: "inbox" | "sent";
 }
 
-interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => boolean;
-  signup: (name: string, email: string, password: string, role: UserRole) => boolean;
-  logout: () => void;
+interface AuthState {
   isAuthenticated: boolean;
+  isInitialised: boolean;
+  user: User | null;
+}
+
+interface AuthContextType extends AuthState {
+  login: (identifier: string, password: string) => Promise<any>;
+  logout: () => void;
+  register: (userData: any) => Promise<void>;
   notifications: Notification[];
   markNotificationRead: (id: string) => void;
   clearNotifications: () => void;
@@ -45,96 +55,192 @@ interface AuthContextType {
   markMessageRead: (id: string) => void;
 }
 
-const mockUsers: Record<string, User & { password: string }> = {
-  "admin@targetpath.com": {
-    id: "1", name: "Dr. Adebayo Ogundimu", email: "admin@targetpath.com",
-    role: "hr_admin", password: "admin123", department: "Human Resources",
-  },
-  "head@targetpath.com": {
-    id: "2", name: "Dr. Funke Akindele", email: "head@targetpath.com",
-    role: "department_head", password: "head123", department: "Laboratory",
-  },
-  "finance@targetpath.com": {
-    id: "3", name: "Mr. Chukwudi Obi", email: "finance@targetpath.com",
-    role: "finance", password: "finance123", department: "Finance",
-  },
-  "fm@targetpath.com": {
-    id: "4", name: "Mrs. Amina Yusuf", email: "fm@targetpath.com",
-    role: "finance_manager", password: "fm123", department: "Finance",
-  },
-  "acct@targetpath.com": {
-    id: "5", name: "Mr. Segun Balogun", email: "acct@targetpath.com",
-    role: "accountant", password: "acct123", department: "Finance",
-  },
-  "sales@targetpath.com": {
-    id: "6", name: "Mrs. Binta Hassan", email: "sales@targetpath.com",
-    role: "sales_marketer", password: "sales123", department: "Sales",
-  },
+// ---------- Helpers ----------
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+const isValidToken = (jwtToken: string | null): boolean => {
+  if (!jwtToken) return false;
+  if (jwtToken === "mock-jwt-token") return true;
+  try {
+    const payload = JSON.parse(atob(jwtToken.split(".")[1]));
+    return payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
 };
 
-const defaultNotifications: Notification[] = [
-  { id: "1", message: "3 leave requests pending approval", time: "10 min ago", read: false, type: "warning" },
-  { id: "2", message: "Chioma Nwosu accepted job offer", time: "1 hour ago", read: false, type: "success" },
-  { id: "3", message: "March payroll processing started", time: "2 hours ago", read: false, type: "info" },
-  { id: "4", message: "New application for Lab Scientist", time: "3 hours ago", read: true, type: "info" },
-  { id: "5", message: "Interview scheduled for Amara Obi", time: "5 hours ago", read: true, type: "info" },
-];
+const setSession = (jwtToken: string | null) => {
+  if (jwtToken) {
+    localStorage.setItem("jwtToken", jwtToken);
+    axios.defaults.headers.common.Authorization = `Bearer ${jwtToken}`;
+  } else {
+    localStorage.removeItem("jwtToken");
+    delete axios.defaults.headers.common.Authorization;
+  }
+};
 
-const defaultMessages: Message[] = [
-  { id: "1", from: "Dr. Funke Akindele", fromRole: "Department Head", to: "Dr. Adebayo Ogundimu", subject: "Lab Staff Shortage", body: "We need to hire at least 2 more lab scientists for the Lagos branch. The workload has increased significantly.", time: "2026-03-13 09:30", read: false, type: "inbox" },
-  { id: "2", from: "Mr. Chukwudi Obi", fromRole: "Finance", to: "Dr. Adebayo Ogundimu", subject: "Payroll Discrepancy", body: "There's a discrepancy in the March payroll for 3 employees in Logistics. Please review.", time: "2026-03-12 14:20", read: false, type: "inbox" },
-  { id: "3", from: "Mrs. Binta Hassan", fromRole: "Sales", to: "Dr. Adebayo Ogundimu", subject: "New Marketing Hire", body: "We urgently need a digital marketing specialist. Can we open a position?", time: "2026-03-11 11:00", read: true, type: "inbox" },
-  { id: "4", from: "Dr. Adebayo Ogundimu", fromRole: "HR Admin", to: "Dr. Funke Akindele", subject: "Re: Lab Staff Shortage", body: "We've opened 2 new positions. Recruitment is underway.", time: "2026-03-13 10:15", read: true, type: "sent" },
-];
+// ---------- Reducer ----------
+type AuthAction =
+  | { type: "INIT"; payload: { isAuthenticated: boolean; user: User | null } }
+  | { type: "LOGIN"; payload: { user: User } }
+  | { type: "LOGOUT" }
+  | { type: "REGISTER"; payload: { user: User } };
 
+const initialState: AuthState = {
+  isAuthenticated: false,
+  isInitialised: false,
+  user: null,
+};
+
+const reducer = (state: AuthState, action: AuthAction): AuthState => {
+  switch (action.type) {
+    case "INIT":
+      return { ...state, isAuthenticated: action.payload.isAuthenticated, isInitialised: true, user: action.payload.user };
+    case "LOGIN":
+      return { ...state, isAuthenticated: true, user: action.payload.user };
+    case "LOGOUT":
+      return { ...state, isAuthenticated: false, user: null };
+    case "REGISTER":
+      return { ...state, isAuthenticated: true, user: action.payload.user };
+    default:
+      return state;
+  }
+};
+
+// ---------- Default data ----------
+const defaultNotifications: Notification[] = [];
+
+const defaultMessages: Message[] = [];
+
+// ---------- Context ----------
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [registeredUsers, setRegisteredUsers] = useState(mockUsers);
-  const [notifications, setNotifications] = useState<Notification[]>(defaultNotifications);
-  const [messages, setMessages] = useState<Message[]>(defaultMessages);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const [notifications, setNotifications] = React.useState<Notification[]>(defaultNotifications);
+  const [messages, setMessages] = React.useState<Message[]>(defaultMessages);
 
-  const login = (email: string, password: string): boolean => {
-    const found = registeredUsers[email];
-    if (found && found.password === password) {
-      const { password: _, ...userData } = found;
-      setUser(userData);
-      return true;
+  // Initialize auth from localStorage on mount
+  useEffect(() => {
+    const initAuth = () => {
+      const jwtToken = localStorage.getItem("jwtToken");
+      const storedUser = localStorage.getItem("user");
+
+      if (jwtToken && isValidToken(jwtToken) && storedUser) {
+        setSession(jwtToken);
+        try {
+          const user = JSON.parse(storedUser);
+          dispatch({ type: "INIT", payload: { isAuthenticated: true, user } });
+        } catch {
+          dispatch({ type: "INIT", payload: { isAuthenticated: false, user: null } });
+        }
+      } else {
+        setSession(null);
+        dispatch({ type: "INIT", payload: { isAuthenticated: false, user: null } });
+      }
+    };
+    initAuth();
+  }, []);
+
+  const login = async (identifier: string, password: string) => {
+    // Mock Login Fallback for testing
+    if (identifier.includes("mock") || (identifier === "admin@example.com" && password === "admin123")) {
+      let mockUser: User;
+      if (identifier === "admin@example.com" || identifier.includes("admin")) {
+        mockUser = {
+          id: "mock-admin-id",
+          _id: "mock-admin-id",
+          username: "Admin (Mock)",
+          name: "Mock Administrator",
+          email: identifier,
+          role: "admin",
+        };
+      } else if (identifier.includes("teacher")) {
+        mockUser = {
+          id: "mock-teacher-id",
+          _id: "mock-teacher-id",
+          username: "Teacher (Mock)",
+          name: "Mock Teacher",
+          email: identifier,
+          role: "teacher",
+        };
+      } else {
+        mockUser = {
+          id: "mock-student-id",
+          _id: "mock-student-id",
+          username: "Student (Mock)",
+          name: "Mock Student",
+          email: identifier,
+          role: "student",
+        };
+      }
+      
+      setSession("mock-jwt-token");
+      localStorage.setItem("user", JSON.stringify(mockUser));
+      localStorage.setItem("userCred", JSON.stringify(mockUser));
+      localStorage.setItem("sessionId", "mock-session-id");
+      dispatch({ type: "LOGIN", payload: { user: mockUser } });
+      return { status: 200, data: { user: mockUser, token: "mock-jwt-token" } };
     }
-    return false;
+
+    try {
+      let response;
+
+      try {
+        response = await axios.post(`${apiUrl}/api/login`, { identifier, password });
+      } catch (error: any) {
+        const status = error?.response?.status;
+        if (status !== 401 && status !== 500) throw error;
+
+        response = await axios.post(`${apiUrl}/api/ad/login`, {
+          email: identifier,
+          identifier,
+          password,
+        });
+      }
+
+      const { token, user, session } = response.data;
+      setSession(token);
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("userCred", JSON.stringify(user));
+      if (session?._id) localStorage.setItem("sessionId", session._id);
+      dispatch({ type: "LOGIN", payload: { user } });
+      return response;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    }
   };
 
-  const signup = (name: string, email: string, password: string, role: UserRole): boolean => {
-    if (registeredUsers[email]) return false;
-    const departmentMap: Record<UserRole, string> = {
-      hr_admin: "Human Resources",
-      department_head: "Administration",
-      finance: "Finance",
-      finance_manager: "Finance",
-      accountant: "Finance",
-      sales_marketer: "Sales",
-    };
-    const newUser = {
-      id: `USR${Date.now()}`,
-      name,
-      email,
-      role,
-      password,
-      department: departmentMap[role],
-    };
-    setRegisteredUsers((prev) => ({ ...prev, [email]: newUser }));
-    const { password: _, ...userData } = newUser;
-    setUser(userData);
-    return true;
+  const register = async (userData: any) => {
+    try {
+      const response = await axios.post(`${apiUrl}/api/register`, userData);
+      if (response.status === 201 || response.status === 200) {
+        const { token, user } = response.data;
+        if (token) {
+          setSession(token);
+          localStorage.setItem("user", JSON.stringify(user));
+          dispatch({ type: "REGISTER", payload: { user } });
+        }
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    }
   };
 
-  const logout = () => setUser(null);
+  const logout = () => {
+    setSession(null);
+    localStorage.removeItem("jwtToken");
+    localStorage.removeItem("user");
+    localStorage.removeItem("userCred");
+    dispatch({ type: "LOGOUT" });
+  };
 
   const markNotificationRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const clearNotifications = () => {
@@ -144,8 +250,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const sendMessage = (to: string, subject: string, body: string) => {
     const newMsg: Message = {
       id: `MSG${Date.now()}`,
-      from: user?.name || "Unknown",
-      fromRole: user?.role === "hr_admin" ? "HR Admin" : user?.role || "",
+      from: state.user?.username || state.user?.name || "Unknown",
+      fromRole: state.user?.role || "",
       to,
       subject,
       body,
@@ -157,43 +263,68 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const markMessageRead = (id: string) => {
-    setMessages((prev) => prev.map((m) => m.id === id ? { ...m, read: true } : m));
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, read: true } : m)));
   };
 
+  // Show loading while initialising
+  if (!state.isInitialised) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, isAuthenticated: !!user, notifications, markNotificationRead, clearNotifications, messages, sendMessage, markMessageRead }}>
+    <AuthContext.Provider
+      value={{
+        ...state,
+        login,
+        logout,
+        register,
+        notifications,
+        markNotificationRead,
+        clearNotifications,
+        messages,
+        sendMessage,
+        markMessageRead,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const roleLabels: Record<UserRole, string> = {
-  hr_admin: "HR Admin",
-  department_head: "Dept Head",
-  finance: "Finance",
-  finance_manager: "Finance Manager",
-  accountant: "Accountant",
-  sales_marketer: "Sales & Marketing",
+// ---------- Exports for sidebar / role access ----------
+export const roleLabels: Record<string, string> = {
+  admin: "Admin",
+  teacher: "Teacher",
+  student: "Student",
+  parent: "Parent",
 };
 
-export const roleAccess: Record<UserRole, string[]> = {
-  hr_admin: [
-    "dashboard", "recruitment", "candidates", "interviews", "onboarding",
-    "employees", "departments", "roles", "guarantors", "payroll", "leave", "reports", "settings", "inbox",
+export const roleAccess: Record<string, string[]> = {
+  admin: [
+    "dashboard", "admin", "inbox", "teacher-dashboard", "student-dashboard",
+    "admit-student", "student-info", "student-promotion",
+    "psycho-category", "psycho-report",
+    "teacher", "subject", "notice", "parents",
+    "class", "exam-list", "manage-marks", "exam-grades", "tabulation", "onscreen-marking",
+    "onlinexam", "curriculum", "gen-questions", "bulk-student-upload",
+    "studentAccounting", "studymaterial", "dailyattend", "settings",
   ],
-  department_head: [
-    "dashboard", "employees", "departments", "leave", "reports", "inbox",
+  teacher: [
+    "dashboard", "teacher-dashboard", "inbox",
+    "teacher-subjects", "teacher-grades", "teacher-student-info",
+    "manage-marks", "tabulation", "onscreen-marking", "onlinexam",
+    "studymaterial", "dailyattend", "notice", "psycho-report",
   ],
-  finance: [
-    "dashboard", "payroll", "reports", "inbox",
+  student: [
+    "dashboard", "student-dashboard", "inbox",
+    "student-results", "studymaterial", "notice", "onlinexam", "homework",
+    "exam-list", "studentAccounting",
   ],
-  finance_manager: [
-    "dashboard", "payroll", "reports", "employees", "inbox",
-  ],
-  accountant: [
-    "dashboard", "payroll", "reports", "inbox",
-  ],
-  sales_marketer: [
-    "dashboard", "employees", "reports", "inbox",
-  ],
+  parent: ["dashboard", "inbox", "notice", "parent-results", "parent-materials", "parent-homework"],
 };
+
+export default AuthContext;

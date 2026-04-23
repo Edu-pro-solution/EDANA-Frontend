@@ -14,6 +14,14 @@ export default {
     },
     extend: {
       colors: {
+        /** Legacy ClassMarkweb Matx `blue` theme (themeColors.js) */
+        brand: {
+          navy: "#042954",
+          gold: "#FFAF38",
+          ink: "#34314c",
+          paper: "#fafafa",
+          error: "#FF3D57",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
