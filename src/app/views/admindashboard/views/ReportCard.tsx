@@ -1,6 +1,6 @@
 /**
  * Shared printable report card — used by all three term pages.
- * termLabel: "First Term" | "Second Term" | "Third Term"
+ * termLabel: "First Term" | "Second Term" | "Third Term" | "Cumulative"
  */
 import { useContext, useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
@@ -14,13 +14,10 @@ interface Score {
   subjectName?: string;
   subject?: string;
   examName?: string;
-  examId?: {
-    name?: string;
-  };
+  examId?: { name?: string };
   testscore?: number;
   examscore?: number;
   marksObtained?: number;
-  // legacy field names (kept for compatibility)
   firstTest?: number;
   secondTest?: number;
   examScore?: number;
@@ -62,8 +59,69 @@ interface PsyData {
   premarks: string;
 }
 
+type CumulativeRow = {
+  subject: string;
+  first: number;
+  second: number;
+  third: number;
+  total: number;
+  average: number;
+  grade: string;
+  remark: string;
+};
+
+function buildCumulativeRows(scores: Score[]): CumulativeRow[] {
+  const subjectMap: Record<
+    string,
+    { first: number; second: number; third: number }
+  > = {};
+
+  scores.forEach((s) => {
+    const subject = String(s.subjectName || s.subject || "Unknown");
+    const examLabel = String(s.examName || s.examId?.name || "").toLowerCase();
+    const test = Number(s.testscore ?? s.firstTest ?? 0);
+    const exam = Number(s.examscore ?? s.examScore ?? 0);
+    const total = Number(s.marksObtained ?? s.total) || test + exam;
+
+    if (!subjectMap[subject]) {
+      subjectMap[subject] = { first: 0, second: 0, third: 0 };
+    }
+
+    if (examLabel.includes("first")) subjectMap[subject].first = total;
+    else if (examLabel.includes("second")) subjectMap[subject].second = total;
+    else if (examLabel.includes("third")) subjectMap[subject].third = total;
+  });
+
+  return Object.entries(subjectMap)
+    .map(([subject, t]) => {
+      const total = t.first + t.second + t.third;
+      const termCount =
+        [t.first, t.second, t.third].filter((n) => n > 0).length || 1;
+      const average = Math.round(total / termCount);
+      const { grade, comment } = deriveGrade(average);
+      return {
+        subject,
+        first: t.first,
+        second: t.second,
+        third: t.third,
+        total,
+        average,
+        grade,
+        remark: comment,
+      };
+    })
+    .sort((a, b) => a.subject.localeCompare(b.subject));
+}
+
 const psyRating = (n: number) => {
-  const map: Record<number, string> = { 0: "N/A", 1: "Poor", 2: "Fair", 3: "Good", 4: "Very Good", 5: "Excellent" };
+  const map: Record<number, string> = {
+    0: "N/A",
+    1: "Poor",
+    2: "Fair",
+    3: "Good",
+    4: "Very Good",
+    5: "Excellent",
+  };
   return map[n] ?? String(n);
 };
 
@@ -103,31 +161,75 @@ export default function ReportCard({ termLabel }: Props) {
 
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const token = localStorage.getItem("jwtToken");
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
+  // ── Derived state (must come before any early return) ──────────────────────
+  const isCumulative = termLabel.toLowerCase() === "cumulative";
+  const cumulativeRows = isCumulative ? buildCumulativeRows(scores) : [];
+
+  const tableHeaders = isCumulative
+    ? [
+        "Subject",
+        "1st Term",
+        "2nd Term",
+        "3rd Term",
+        "Total",
+        "Average",
+        "Grade",
+      ]
+    : ["Subject", "Test", "Exam", "Total", "Grade", "Remark"];
+
+  const colSpan = tableHeaders.length;
+
+  const totalAll = isCumulative
+    ? cumulativeRows.reduce((s, r) => s + r.average, 0)
+    : scores.reduce((s, r) => {
+        const t =
+          Number(r.marksObtained ?? r.total) ||
+          Number(r.testscore ?? r.firstTest ?? 0) +
+            Number(r.examscore ?? r.examScore ?? 0);
+        return s + t;
+      }, 0);
+
+  const avg = isCumulative
+    ? cumulativeRows.length
+      ? Math.round(totalAll / cumulativeRows.length)
+      : 0
+    : scores.length
+      ? Math.round(totalAll / scores.length)
+      : 0;
+
+  // ── Data fetching ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!id || !currentSession?._id) return;
     setLoading(true);
 
     const termKeyword = termLabel.split(" ")[0].toLowerCase();
-    const isCumulative = termLabel.toLowerCase() === "cumulative";
 
-    // Fetch exams to find the ObjectId matching this term, then load everything in parallel
-    axios.get(`${apiUrl}/api/getofflineexam/${currentSession._id}`, { headers })
+    axios
+      .get(`${apiUrl}/api/getofflineexam/${currentSession._id}`, {
+        headers: authHeaders,
+      })
       .then((examRes) => {
         const exams: any[] = Array.isArray(examRes.data) ? examRes.data : [];
         const matchedExam = exams.find((e: any) =>
-          (e.name || "").toLowerCase().includes(termKeyword)
+          (e.name || "").toLowerCase().includes(termKeyword),
         );
 
         return Promise.allSettled([
-          axios.get(`${apiUrl}/api/get-students/${id}/${currentSession._id}`, { headers }),
-          axios.get(`${apiUrl}/api/get-scores-by-student/${id}/${currentSession._id}`, { headers }),
-          axios.get(`${apiUrl}/api/account-setting`, { headers }),
-          axios.get(`${apiUrl}/api/setting`, { headers }),
-          // Use the exam ObjectId for psychomotor lookup (getScores endpoint)
+          axios.get(`${apiUrl}/api/get-students/${id}/${currentSession._id}`, {
+            headers: authHeaders,
+          }),
+          axios.get(
+            `${apiUrl}/api/get-scores-by-student/${id}/${currentSession._id}`,
+            { headers: authHeaders },
+          ),
+          axios.get(`${apiUrl}/api/account-setting`, { headers: authHeaders }),
+          axios.get(`${apiUrl}/api/setting`, { headers: authHeaders }),
           matchedExam
-            ? axios.get(`${apiUrl}/api/get-all-psy/${matchedExam._id}`, { headers })
+            ? axios.get(`${apiUrl}/api/get-all-psy/${matchedExam._id}`, {
+                headers: authHeaders,
+              })
             : Promise.resolve({ data: { scores: [] } }),
         ]);
       })
@@ -136,53 +238,56 @@ export default function ReportCard({ termLabel }: Props) {
           const d = stuRes.value.data?.data || stuRes.value.data;
           setStudent(Array.isArray(d) ? d[0] : d);
         }
+
         if (scoresRes.status === "fulfilled") {
           const resData = scoresRes.value.data;
-          // API returns { studentId, sessionId, scores: [...] }
           const raw = resData?.scores ?? resData?.data ?? resData;
           const list: Score[] = Array.isArray(raw) ? raw : [];
+          // For cumulative we keep ALL scores; for a specific term we filter
           const filtered = isCumulative
             ? list
             : list.filter((s) => {
-                const examLabel = String(s.examName || s.examId?.name || "").toLowerCase();
-                return !examLabel || examLabel.includes(termKeyword);
+                const label = String(
+                  s.examName || s.examId?.name || "",
+                ).toLowerCase();
+                return !label || label.includes(termKeyword);
               });
           setScores(filtered);
         }
+
         if (schoolRes.status === "fulfilled") {
           const d = schoolRes.value.data?.data || schoolRes.value.data;
-          const raw: any = Array.isArray(d) ? d[0] ?? {} : d ?? {};
+          const raw: any = Array.isArray(d) ? (d[0] ?? {}) : (d ?? {});
           const logoRaw = raw.schoolLogo || raw.logo || raw.logoUrl || "";
-          const logoFull = logoRaw && !logoRaw.startsWith("http")
-            ? `${apiUrl}/${logoRaw.replace(/^\//, "")}`
-            : logoRaw;
+          const logoFull =
+            logoRaw && !logoRaw.startsWith("http")
+              ? `${apiUrl}/${logoRaw.replace(/^\//, "")}`
+              : logoRaw;
           setSchool({ ...raw, schoolLogo: logoFull });
         }
+
         if (profileRes.status === "fulfilled") {
           const d = profileRes.value.data?.data || profileRes.value.data;
-          setProfile(Array.isArray(d) ? d[0] ?? {} : d ?? {});
+          setProfile(Array.isArray(d) ? (d[0] ?? {}) : (d ?? {}));
         }
+
         if (psyRes.status === "fulfilled") {
-          // getScores returns { examId, scores: [{ studentId: populated, instruction, ... }] }
           const psyScores: any[] = psyRes.value.data?.scores || [];
-          const found = psyScores.find((m: any) =>
-            String(m.studentId?._id || m.studentId) === String(id)
+          const found = psyScores.find(
+            (m: any) => String(m.studentId?._id || m.studentId) === String(id),
           );
           if (found) setPsyData(found);
         }
       })
-      .catch(() => {/* silent — partial failure is OK */})
+      .catch(() => {
+        /* silent — partial failure is OK */
+      })
       .finally(() => setLoading(false));
   }, [apiUrl, currentSession, id, termLabel]);
 
   const handlePrint = useReactToPrint({ contentRef: printRef });
 
-  const totalAll = scores.reduce((s, r) => {
-    const t = Number(r.marksObtained ?? r.total) || (Number(r.testscore ?? r.firstTest ?? 0) + Number(r.examscore ?? r.examScore ?? 0));
-    return s + t;
-  }, 0);
-  const avg = scores.length ? Math.round(totalAll / scores.length) : 0;
-
+  // ── Early return after all hooks ───────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -191,11 +296,15 @@ export default function ReportCard({ termLabel }: Props) {
     );
   }
 
+  const hasRows = isCumulative ? cumulativeRows.length > 0 : scores.length > 0;
+
   return (
     <div className="p-4 sm:p-6 space-y-4 max-w-4xl mx-auto">
-      {/* Toolbar — hidden on print */}
+      {/* Toolbar */}
       <div className="flex items-center justify-between dont-print">
-        <Link to={-1 as any} className="flex items-center gap-2 text-muted-foreground hover:text-primary">
+        <Link
+          to={-1 as any}
+          className="flex items-center gap-2 text-muted-foreground hover:text-primary">
           <ArrowLeft size={18} /> Back
         </Link>
         <Button onClick={() => handlePrint()} className="gap-2">
@@ -204,16 +313,26 @@ export default function ReportCard({ termLabel }: Props) {
       </div>
 
       {/* Printable area */}
-      <div ref={printRef} className="printable-area bg-white border border-border rounded-lg p-6 print:p-4 print:border-none space-y-4">
+      <div
+        ref={printRef}
+        className="printable-area bg-white border border-border rounded-lg p-6 print:p-4 print:border-none space-y-4">
         {/* School header */}
         <div className="text-center space-y-1 border-b pb-4">
           {school.schoolLogo && (
-            <img src={school.schoolLogo} alt="School Logo" className="h-16 w-16 object-contain mx-auto mb-2" />
+            <img
+              src={school.schoolLogo}
+              alt="School Logo"
+              className="h-16 w-16 object-contain mx-auto mb-2"
+            />
           )}
-          <h1 className="text-xl font-black text-primary uppercase">{school.name || "School Name"}</h1>
+          <h1 className="text-xl font-black text-primary uppercase">
+            {school.name || "School Name"}
+          </h1>
           <p className="text-xs text-muted-foreground italic">{school.motto}</p>
           <p className="text-xs text-muted-foreground">{school.address}</p>
-          {school.phone && <p className="text-xs text-muted-foreground">Tel: {school.phone}</p>}
+          {school.phone && (
+            <p className="text-xs text-muted-foreground">Tel: {school.phone}</p>
+          )}
           <div className="mt-2 inline-block bg-primary text-primary-foreground text-xs font-bold px-4 py-1 rounded-full">
             {termLabel} Report Card
           </div>
@@ -230,7 +349,9 @@ export default function ReportCard({ termLabel }: Props) {
             ["Term", termLabel],
           ].map(([label, value]) => (
             <div key={label} className="space-y-0.5">
-              <p className="text-[10px] text-muted-foreground uppercase font-bold">{label}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold">
+                {label}
+              </p>
               <p className="font-semibold text-primary">{value}</p>
             </div>
           ))}
@@ -241,39 +362,91 @@ export default function ReportCard({ termLabel }: Props) {
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-primary text-primary-foreground">
-                {["Subject", "Test", "Exam", "Total", "Grade", "Remark"].map((h) => (
-                  <th key={h} className="px-2 py-2 text-left whitespace-nowrap">{h}</th>
+                {tableHeaders.map((h) => (
+                  <th key={h} className="px-2 py-2 text-left whitespace-nowrap">
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {scores.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">No scores found for this term</td></tr>
+              {!hasRows ? (
+                <tr>
+                  <td
+                    colSpan={colSpan}
+                    className="text-center py-6 text-muted-foreground">
+                    No scores found for this term
+                  </td>
+                </tr>
+              ) : isCumulative ? (
+                cumulativeRows.map((row, i) => (
+                  <tr
+                    key={i}
+                    className={i % 2 === 0 ? "bg-muted/20" : "bg-white"}>
+                    <td className="px-2 py-1.5 font-medium">{row.subject}</td>
+                    <td className="px-2 py-1.5 text-center">
+                      {row.first || "—"}
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      {row.second || "—"}
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      {row.third || "—"}
+                    </td>
+                    <td className="px-2 py-1.5 text-center font-bold">
+                      {row.total}
+                    </td>
+                    <td className="px-2 py-1.5 text-center font-bold">
+                      {row.average}
+                    </td>
+                    <td
+                      className={`px-2 py-1.5 text-center ${gradeColor(row.grade)}`}>
+                      {row.grade}
+                    </td>
+                  </tr>
+                ))
               ) : (
                 scores.map((s, i) => {
                   const test = Number(s.testscore ?? s.firstTest ?? 0);
                   const exam = Number(s.examscore ?? s.examScore ?? 0);
-                  const total = Number(s.marksObtained ?? s.total) || (test + exam);
+                  const total =
+                    Number(s.marksObtained ?? s.total) || test + exam;
                   const { grade, comment } = deriveGrade(total);
                   return (
-                    <tr key={i} className={i % 2 === 0 ? "bg-muted/40" : "bg-white"}>
-                      <td className="px-2 py-1.5 font-medium">{s.subjectName || s.subject || "—"}</td>
-                      <td className="px-2 py-1.5 text-center">{test || "—"}</td>
-                      <td className="px-2 py-1.5 text-center">{exam || "—"}</td>
-                      <td className="px-2 py-1.5 text-center font-bold">{total || "—"}</td>
-                      <td className={`px-2 py-1.5 text-center ${gradeColor(s.grade || grade)}`}>{s.grade || grade}</td>
-                      <td className="px-2 py-1.5">{s.comment || comment}</td>
+                    <tr
+                      key={i}
+                      className={i % 2 === 0 ? "bg-muted/20" : "bg-white"}>
+                      <td className="px-2 py-1.5 font-medium">
+                        {s.subjectName || s.subject || "—"}
+                      </td>
+                      <td className="px-2 py-1.5 text-center">{test}</td>
+                      <td className="px-2 py-1.5 text-center">{exam}</td>
+                      <td className="px-2 py-1.5 text-center font-bold">
+                        {total}
+                      </td>
+                      <td
+                        className={`px-2 py-1.5 text-center ${gradeColor(s.grade || grade)}`}>
+                        {s.grade || grade}
+                      </td>
+                      <td className="px-2 py-1.5 text-center">
+                        {s.comment || comment}
+                      </td>
                     </tr>
                   );
                 })
               )}
             </tbody>
-            {scores.length > 0 && (
+            {hasRows && (
               <tfoot>
                 <tr className="bg-primary/10 font-bold">
-                  <td className="px-2 py-2" colSpan={3}>Average</td>
+                  <td className="px-2 py-2" colSpan={isCumulative ? 5 : 3}>
+                    Average
+                  </td>
                   <td className="px-2 py-2 text-center">{avg}</td>
-                  <td className="px-2 py-2 text-center" colSpan={2}>{deriveGrade(avg).grade}</td>
+                  <td
+                    className={`px-2 py-2 text-center ${gradeColor(deriveGrade(avg).grade)}`}>
+                    {deriveGrade(avg).grade}
+                  </td>
                 </tr>
               </tfoot>
             )}
@@ -283,7 +456,9 @@ export default function ReportCard({ termLabel }: Props) {
         {/* Psychomotor / Affective Report */}
         {psyData && (
           <div className="mt-4 pt-4 border-t">
-            <h3 className="text-xs font-bold text-primary uppercase mb-2">Affective &amp; Psychomotor Report</h3>
+            <h3 className="text-xs font-bold text-primary uppercase mb-2">
+              Affective &amp; Psychomotor Report
+            </h3>
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-primary text-primary-foreground">
@@ -293,14 +468,18 @@ export default function ReportCard({ termLabel }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {([
-                  ["Following Instruction", psyData.instruction],
-                  ["Working Independently", psyData.independently],
-                  ["Punctuality", psyData.punctuality],
-                  ["Talking", psyData.talking],
-                  ["Eye Contact", psyData.eyecontact],
-                ] as [string, number][]).map(([label, val], i) => (
-                  <tr key={label} className={i % 2 === 0 ? "bg-muted/40" : "bg-white"}>
+                {(
+                  [
+                    ["Following Instruction", psyData.instruction],
+                    ["Working Independently", psyData.independently],
+                    ["Punctuality", psyData.punctuality],
+                    ["Talking", psyData.talking],
+                    ["Eye Contact", psyData.eyecontact],
+                  ] as [string, number][]
+                ).map(([label, val], i) => (
+                  <tr
+                    key={label}
+                    className={i % 2 === 0 ? "bg-muted/40" : "bg-white"}>
                     <td className="px-2 py-1.5 font-medium">{label}</td>
                     <td className="px-2 py-1.5 text-center">{val}</td>
                     <td className="px-2 py-1.5">{psyRating(val)}</td>
@@ -311,10 +490,20 @@ export default function ReportCard({ termLabel }: Props) {
             {(psyData.remarks || psyData.premarks) && (
               <div className="grid grid-cols-2 gap-4 mt-2 text-xs">
                 {psyData.remarks && (
-                  <div><span className="font-bold text-primary">Teacher's Remark: </span>{psyData.remarks}</div>
+                  <div>
+                    <span className="font-bold text-primary">
+                      Teacher's Remark:{" "}
+                    </span>
+                    {psyData.remarks}
+                  </div>
                 )}
                 {psyData.premarks && (
-                  <div><span className="font-bold text-primary">Principal's Remark: </span>{psyData.premarks}</div>
+                  <div>
+                    <span className="font-bold text-primary">
+                      Principal's Remark:{" "}
+                    </span>
+                    {psyData.premarks}
+                  </div>
                 )}
               </div>
             )}
@@ -329,10 +518,16 @@ export default function ReportCard({ termLabel }: Props) {
           </div>
           <div className="space-y-8">
             {profile.signature && (
-              <img src={profile.signature} alt="Principal Signature" className="h-10 object-contain mx-auto" />
+              <img
+                src={profile.signature}
+                alt="Principal Signature"
+                className="h-10 object-contain mx-auto"
+              />
             )}
             <div className="border-b border-border" />
-            <p className="text-muted-foreground">Principal: {profile.principalName || "—"}</p>
+            <p className="text-muted-foreground">
+              Principal: {profile.principalName || "—"}
+            </p>
           </div>
           <div className="space-y-8">
             <div className="border-b border-border" />
@@ -342,7 +537,10 @@ export default function ReportCard({ termLabel }: Props) {
 
         {profile.resumptionDate && (
           <p className="text-xs text-center text-muted-foreground mt-2">
-            Next Resumption: <span className="font-semibold">{new Date(profile.resumptionDate).toLocaleDateString()}</span>
+            Next Resumption:{" "}
+            <span className="font-semibold">
+              {new Date(profile.resumptionDate).toLocaleDateString()}
+            </span>
           </p>
         )}
       </div>
