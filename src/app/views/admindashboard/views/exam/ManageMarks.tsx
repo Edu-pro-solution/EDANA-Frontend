@@ -348,13 +348,13 @@ export default function ManageMarks() {
         <p className="text-sm text-muted-foreground">Select parameters to record or update student scores.</p>
       </div>
 
-      <Card className="border-black shadow-sm bg-white">
+      <Card className="border border-slate-200 bg-white shadow-sm">
         <CardContent className="p-6">
           <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-2">
               <label className="text-[10px] font-bold uppercase text-black">Exam</label>
               <Select value={selectedExam} onValueChange={setSelectedExam}>
-                <SelectTrigger className="h-11 border-black">
+                <SelectTrigger className="h-11 border-input">
                   <SelectValue placeholder="Select Exam" />
                 </SelectTrigger>
                 <SelectContent>
@@ -370,7 +370,7 @@ export default function ManageMarks() {
             <div className="space-y-2">
               <label className="text-[10px] font-bold uppercase text-black">Class</label>
               <Select value={selectedClass} onValueChange={handleClassChange}>
-                <SelectTrigger className="h-11 border-black">
+                <SelectTrigger className="h-11 border-input">
                   <SelectValue placeholder="Select Class" />
                 </SelectTrigger>
                 <SelectContent>
@@ -386,7 +386,7 @@ export default function ManageMarks() {
             <div className="space-y-2">
               <label className="text-[10px] font-bold uppercase text-black">Subject</label>
               <Select value={selectedSubjectId} onValueChange={handleSubjectChange} disabled={!selectedClass}>
-                <SelectTrigger className="h-11 border-black">
+                <SelectTrigger className="h-11 border-input">
                   <SelectValue placeholder="Select Subject" />
                 </SelectTrigger>
                 <SelectContent>
@@ -405,8 +405,8 @@ export default function ManageMarks() {
             </Button>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-black pt-4">
-            <Label htmlFor="marks-import" className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-black bg-primary px-4 py-2 text-sm font-medium text-white">
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
+            <Label htmlFor="marks-import" className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 bg-primary px-4 py-2 text-sm font-medium text-white">
               <Upload className="h-4 w-4" />
               {importing ? "Importing..." : "Import CSV, Excel or Image"}
             </Label>
@@ -421,7 +421,7 @@ export default function ManageMarks() {
                 event.currentTarget.value = "";
               }}
             />
-            <p className="text-xs text-black">
+            <p className="text-xs text-slate-600">
               Upload a mark sheet. Test 1 and Test 2 will be added together and capped at 40, and you can still edit every imported row before saving.
             </p>
           </div>
@@ -429,13 +429,13 @@ export default function ManageMarks() {
       </Card>
 
       {fetched && (
-        <Card className="border-black shadow-sm overflow-hidden">
-          <CardHeader className="border-b border-black bg-muted/40">
+        <Card className="overflow-hidden border border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-200 bg-muted/40">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-bold text-primary">
                 Marks For: {selectedSubjectName || "-"} ({selectedClass || "-"})
               </CardTitle>
-              <Button size="sm" variant="outline" onClick={handleSave} disabled={saving || rows.length === 0} className="gap-2 border-black text-primary hover:bg-accent">
+              <Button size="sm" variant="outline" onClick={handleSave} disabled={saving || rows.length === 0} className="gap-2 border-slate-300 text-primary hover:bg-accent">
                 <Save className="h-3.5 w-3.5" />
                 Save Changes
               </Button>
@@ -485,7 +485,7 @@ export default function ManageMarks() {
                           max={40}
                           value={student.testscore}
                           onChange={(event) => handleChangeRow(indexOfFirstItem + index, "testscore", event.target.value)}
-                          className="h-9 border-black text-center"
+                          className="h-9 border-input text-center"
                         />
                       </TableCell>
                       <TableCell>
@@ -495,7 +495,7 @@ export default function ManageMarks() {
                           max={60}
                           value={student.examscore}
                           onChange={(event) => handleChangeRow(indexOfFirstItem + index, "examscore", event.target.value)}
-                          className="h-9 border-black text-center"
+                          className="h-9 border-input text-center"
                         />
                       </TableCell>
                       <TableCell className="text-center text-lg font-bold text-primary">{student.marksObtained}</TableCell>
@@ -503,7 +503,7 @@ export default function ManageMarks() {
                         <Input
                           value={student.comment}
                           readOnly
-                          className="h-9 border-black bg-muted/30 font-medium text-black"
+                          className="h-9 border-input bg-muted/30 font-medium text-black"
                         />
                       </TableCell>
                     </TableRow>
@@ -512,7 +512,7 @@ export default function ManageMarks() {
               </TableBody>
             </Table>
 
-            <div className="border-t border-black px-4">
+            <div className="border-t border-slate-200 px-4">
               <DataTablePagination
                 totalItems={rows.length}
                 itemsPerPage={itemsPerPage}
