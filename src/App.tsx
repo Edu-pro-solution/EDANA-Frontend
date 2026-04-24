@@ -39,6 +39,7 @@ import ManageOnlineExams from "./app/views/admindashboard/views/onlineexam/Manag
 import CurriculumGenerator from "./app/views/admindashboard/views/CurriculumGen";
 import QuestionsGenerator from "./app/views/admindashboard/views/GenQuestions";
 import BulkStudentUpload from "./app/views/admindashboard/views/student/BulkUpload";
+import StudentIdCard from "./app/views/admindashboard/views/student/StudentIdCard";
 import StudentReceiptForm from "./app/views/admindashboard/views/accounting/StuReceipt";
 import PaymentHistory from "./app/views/admindashboard/views/accounting/StuPayments";
 import ManageStudyMaterial from "./app/views/admindashboard/views/StudyMaterial";
@@ -178,6 +179,7 @@ const App = () => (
                 <Route path="/student/admit" element={<AdmitStudent />} />
                 <Route path="/student/bulk-upload" element={<BulkStudentUpload />} />
                 <Route path="/student/information/:classId" element={<StudentInformation />} />
+                <Route path="/student/id-card/:id" element={<StudentIdCard />} />
                 <Route path="/student/promotion" element={<StudentPromotion />} />
                 <Route path="/psycho/category" element={<Category />} />
                 <Route path="/psycho/stu-report" element={<PsychoStudentReport />} />

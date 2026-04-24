@@ -65,13 +65,23 @@ function getDisplayAnswer(q: ApiQuestion): string {
   return "";
 }
 
+function formatExamDate(value?: string) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
+
+function getExamTitle(exam: any) {
+  return exam?.title || exam?.examTitle || exam?.name || "—";
+}
+
 interface Props {
   exam: any;
   onBack: () => void;
   onSaveQuestions?: (examId: any, questions: any[]) => void;
 }
 
-export default function ManageQuestions({ exam, onBack }: Props) {
+export default function ManageQuestions({ exam, onBack: _onBack }: Props) {
   const { currentSession } = useContext(SessionContext);
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const sessionId = currentSession?._id;
@@ -177,10 +187,21 @@ export default function ManageQuestions({ exam, onBack }: Props) {
     }
   };
 
+  const totalMarks =
+    Number(exam?.totalMark ?? exam?.totalMarks) ||
+    questions.reduce((sum, question) => sum + Number(question.mark || 0), 0);
+  const passPercentage = exam?.percent ?? exam?.passPercentage ?? exam?.passMark ?? "—";
+
   return (
     <div className="p-6 space-y-6">
-      <Button variant="ghost" onClick={onBack} className="text-slate-500 hover:text-[#004aaa] gap-2">
-        <ArrowLeft size={16} /> Back to Manage Online Exams
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={_onBack}
+        className="gap-2 border border-black text-black hover:bg-[#004aaa] hover:text-white"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Manage Online Exams
       </Button>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
@@ -226,11 +247,11 @@ export default function ManageQuestions({ exam, onBack }: Props) {
                       <TableCell className="text-center text-slate-500 font-medium">{q.mark}</TableCell>
                       <TableCell className="pr-6">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(q)} className="h-8 w-8 text-blue-600 hover:bg-blue-50">
-                            <Pencil className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(q)} className="h-8 w-8 text-[#004aaa] hover:bg-[#004aaa]/10 hover:text-[#004aaa]">
+                            <Pencil className="h-4 w-4 text-[#004aaa]" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(q)} className="h-8 w-8 text-destructive hover:bg-red-50">
-                            <Trash2 className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(q)} className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-600">
+                            <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
                         </div>
                       </TableCell>
@@ -250,14 +271,14 @@ export default function ManageQuestions({ exam, onBack }: Props) {
             <CardContent className="p-0">
               <div className="grid grid-cols-2">
                 {[
-                  ["Exam Title", exam?.examTitle || exam?.name],
-                  ["Date", exam?.date],
+                  ["Exam Title", getExamTitle(exam)],
+                  ["Date", formatExamDate(exam?.date || exam?.examDate)],
                   ["Class", exam?.className || exam?.class],
                   ["Time", `${exam?.startTime || exam?.fromTime || "—"} - ${exam?.endTime || exam?.toTime || "—"}`],
                   ["Subject", exam?.subjectName || exam?.subject],
-                  ["Pass %", `${exam?.passMark || "—"}%`],
-                  ["Total Marks", exam?.totalMark],
-                  ["Instructions", exam?.instruction],
+                  ["Pass %", `${passPercentage}%`],
+                  ["Total Marks", totalMarks || "—"],
+                  ["Instructions", exam?.instruction || "—"],
                 ].map(([label, value]) => (
                   <div key={label} className="border-b border-r border-slate-200 p-4 odd:bg-slate-50/40">
                     <p className="text-xs font-bold uppercase text-slate-400">{label}</p>
@@ -324,9 +345,9 @@ export default function ManageQuestions({ exam, onBack }: Props) {
                       <div key={i} className="flex gap-2">
                         <Input value={opt} onChange={(e) => setForm(f => ({ ...f, options: f.options.map((o, j) => j === i ? e.target.value : o) }))} placeholder={`Option ${i + 1}`} />
                         {form.options.length > 2 && (
-                          <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-red-50"
+                          <Button type="button" variant="ghost" size="icon" className="text-red-600 hover:bg-red-50 hover:text-red-600"
                             onClick={() => setForm(f => ({ ...f, options: f.options.filter((_, j) => j !== i), answer: f.answer === f.options[i] ? "" : f.answer }))}>
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
                         )}
                       </div>

@@ -6,6 +6,7 @@ import { SessionContext } from "@/contexts/SessionContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Save, Search } from "lucide-react";
+import { Save, Search, Upload } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 
 type MarkRow = {
@@ -54,6 +55,7 @@ export default function ManageMarks() {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<MarkRow[]>([]);
   const [fetched, setFetched] = useState(false);
+  const [importing, setImporting] = useState(false);
   const itemsPerPage = 5;
 
   const { data: classData } = useFetch(sessionId ? `/class/${sessionId}` : null);
@@ -77,6 +79,18 @@ export default function ManageMarks() {
   const authHeaders = () => {
     const token = localStorage.getItem("jwtToken");
     return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const notifyError = (title: string, description: string) => {
+    toast.error(title, { description });
+  };
+
+  const notifySuccess = (title: string, description?: string) => {
+    toast.success(title, description ? { description } : undefined);
+  };
+
+  const notifyWarning = (title: string, description: string) => {
+    toast.warning(title, { description });
   };
 
   const getRemarkFromTotal = (total: number) => {
@@ -107,7 +121,10 @@ export default function ManageMarks() {
 
   const handleLoad = async () => {
     if (!sessionId || !selectedClass || !selectedSubjectId || !selectedExam) {
-      toast.error("Please select an exam, class, and subject");
+      notifyError(
+        "Selection required",
+        "Choose the exam, class, and subject before loading marks."
+      );
       return;
     }
 
@@ -148,10 +165,18 @@ export default function ManageMarks() {
       setRows(merged);
       setFetched(true);
       setCurrentPage(1);
-      if (merged.length === 0) toast.warning("No students found for this class.");
+      if (merged.length === 0) {
+        notifyWarning(
+          "No students found",
+          "There are no student records available for the selected class."
+        );
+      }
     } catch (error) {
       console.error("Failed to load marks:", error);
-      toast.error("Failed to load marks");
+      notifyError(
+        "Unable to load marks",
+        "Please try again. If the problem continues, check the console for details."
+      );
     } finally {
       setLoading(false);
     }
@@ -189,12 +214,126 @@ export default function ManageMarks() {
         },
         { headers: authHeaders() }
       );
-      toast.success("Marks saved successfully");
+      notifySuccess(
+        "Marks saved",
+        "All edited scores have been stored successfully."
+      );
     } catch (error) {
       console.error("Failed to save marks:", error);
-      toast.error("Failed to save marks");
+      notifyError(
+        "Unable to save marks",
+        "Please try again. If it fails again, review the console logs."
+      );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleImport = async (file: File | null) => {
+    if (!file) return;
+    if (!sessionId || !selectedClass || !selectedSubjectId || !selectedExam) {
+      notifyError(
+        "Import setup incomplete",
+        "Select the exam, class, and subject before importing a mark sheet."
+      );
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const payload = new FormData();
+      payload.append("file", file);
+      payload.append("className", selectedClass);
+      payload.append("subjectId", selectedSubjectId);
+      payload.append("examId", selectedExam);
+
+      const response = await axios.post(`${apiUrl}/api/import-marks/${sessionId}`, payload, {
+        headers: { ...authHeaders(), "Content-Type": "multipart/form-data" },
+      });
+
+      console.log("OCR import debug:", response.data?.ocrDebug || null);
+      console.log("OCR import matched rows:", response.data?.rows || []);
+      console.log("OCR import unmatched rows:", response.data?.unmatched || []);
+
+      const importedRows = Array.isArray(response.data?.rows) ? response.data.rows : [];
+      const matchedImportedRows = importedRows.filter((item: any) => item.matched && item.studentId);
+      const mergedRows = rows.length > 0 ? rows : [];
+
+      const nextRows = (mergedRows.length > 0 ? mergedRows : matchedImportedRows)
+        .map((row: any) => {
+          const imported = matchedImportedRows.find((item: any) => String(item.studentId) === String(row.studentId));
+          if (!imported) return row;
+          const marksObtained = Number(imported.testscore || 0) + Number(imported.examscore || 0);
+          return {
+            ...row,
+            testscore: Number(imported.testscore || 0),
+            examscore: Number(imported.examscore || 0),
+            marksObtained,
+            comment: getRemarkFromTotal(marksObtained),
+          };
+        })
+        .concat(
+          mergedRows.length === 0
+            ? matchedImportedRows
+                .map((item: any) => ({
+                  studentId: String(item.studentId),
+                  studentName: item.studentName,
+                  AdmNo: item.AdmNo,
+                  testscore: Number(item.testscore || 0),
+                  examscore: Number(item.examscore || 0),
+                  marksObtained: Number(item.testscore || 0) + Number(item.examscore || 0),
+                  comment: getRemarkFromTotal(Number(item.testscore || 0) + Number(item.examscore || 0)),
+                }))
+            : []
+        );
+
+      setRows(
+        nextRows.length > 0
+          ? nextRows.filter((row: any, index: number, self: any[]) => self.findIndex((item) => item.studentId === row.studentId) === index)
+          : []
+      );
+      setFetched(true);
+      setCurrentPage(1);
+      notifySuccess(
+        "Import complete",
+        response.data?.message || "Review the imported rows, make any corrections, then save."
+      );
+      if (response.data?.unmatched?.length) {
+        notifyWarning(
+          "Some rows need review",
+          `${response.data.unmatched.length} imported row(s) could not be matched to a student in this class.`
+        );
+      }
+      if (matchedImportedRows.length === 0) {
+        notifyError(
+          "No student matches found",
+          "The imported names did not match any students in the selected class."
+        );
+      }
+    } catch (error) {
+      const err = error as any;
+      console.error("Failed to import marks:", err);
+      console.error("Import marks response:", err?.response?.data || null);
+      console.error("Import marks OCR debug:", err?.response?.data?.ocrDebug || null);
+
+      if (err?.response?.status === 422) {
+        notifyError(
+          "Image could not be read",
+          "Please upload a clearer mark sheet image, or use CSV/Excel for a more reliable import."
+        );
+      } else if (err?.response?.status === 400) {
+        notifyError(
+          "Import request invalid",
+          "Check that the exam, class, subject, and supported file have all been selected correctly."
+        );
+      } else {
+        notifyError(
+          "Import failed",
+          "We could not import the mark sheet right now. Please try again and check the console if the issue persists."
+        );
+      }
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -264,6 +403,27 @@ export default function ManageMarks() {
               <Search className="h-4 w-4" />
               {loading ? "Loading..." : "Load Marks"}
             </Button>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-black pt-4">
+            <Label htmlFor="marks-import" className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-black bg-primary px-4 py-2 text-sm font-medium text-white">
+              <Upload className="h-4 w-4" />
+              {importing ? "Importing..." : "Import CSV, Excel or Image"}
+            </Label>
+            <Input
+              id="marks-import"
+              type="file"
+              accept=".csv,.xlsx,.xls,image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                void handleImport(file);
+                event.currentTarget.value = "";
+              }}
+            />
+            <p className="text-xs text-black">
+              Upload a mark sheet. Test 1 and Test 2 will be added together and capped at 40, and you can still edit every imported row before saving.
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -5,47 +5,35 @@
 @tailwind utilities;
 
 @layer base {
-  /* Monotone ClassMark palette: primary/sidebar #004aaa, text black/white */
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 8%;
-
     --card: 0 0% 100%;
     --card-foreground: 0 0% 8%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 8%;
-
     --primary: 213 100% 33%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 8%;
-
     --muted: 0 0% 97%;
     --muted-foreground: 0 0% 0%;
-
     --accent: 213 100% 96%;
     --accent-foreground: 213 100% 33%;
-
-    --destructive: 0 84% 60%;
+    --destructive: 213 100% 33%;
     --destructive-foreground: 0 0% 100%;
-
     --border: 0 0% 0%;
     --input: 0 0% 0%;
     --ring: 213 100% 33%;
-
     --radius: 0.5rem;
-
-    --sidebar-background: 213 100% 33%;
+    --sidebar-background: 213 100% 29%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 213 100% 33%;
+    --sidebar-primary: 213 100% 29%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 213 100% 40%;
     --sidebar-accent-foreground: 0 0% 96%;
     --sidebar-border: 213 100% 40%;
     --sidebar-ring: 0 0% 100%;
-
     --chart-1: 213 100% 33%;
     --chart-2: 0 0% 15%;
     --chart-3: 0 0% 35%;
@@ -53,36 +41,26 @@
     --chart-5: 0 0% 75%;
   }
 
-  /* Matx slateDark1-style dark: navy surfaces, gold secondary */
   .dark {
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
-
     --card: 0 0% 6%;
     --card-foreground: 0 0% 100%;
-
     --popover: 0 0% 6%;
     --popover-foreground: 0 0% 100%;
-
     --primary: 213 100% 33%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 100%;
-
     --muted: 0 0% 12%;
     --muted-foreground: 0 0% 82%;
-
     --accent: 213 100% 24%;
     --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 84% 60%;
+    --destructive: 213 100% 33%;
     --destructive-foreground: 0 0% 100%;
-
     --border: 0 0% 100%;
     --input: 0 0% 100%;
     --ring: 213 100% 33%;
-
     --sidebar-background: 213 100% 33%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
@@ -112,6 +90,10 @@
   h1, h2, h3 {
     font-family: 'DM Sans', system-ui, sans-serif;
     font-weight: 700;
+  }
+
+  .printable-receipt .text-slate-500 {
+    display: none;
   }
 }
 

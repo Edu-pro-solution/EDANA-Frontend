@@ -40,10 +40,10 @@ export const FormShell = ({
             {children}
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-black">
-            <Button type="button" variant="outline" className="border-black text-black hover:bg-accent" onClick={() => handleOpenChange(false)}>
+            <Button type="button" variant="outline" className="border-black text-black hover:bg-[#004aaa]/10 hover:text-black" onClick={() => handleOpenChange(false)}>
               Close
             </Button>
-            <Button type="submit" loading={loading} className="px-8 bg-primary text-white hover:bg-primary/90 active:bg-primary active:text-white">
+            <Button type="submit" loading={loading} className="px-8 bg-primary text-white hover:bg-primary/90 hover:text-white active:bg-primary active:text-white focus-visible:text-white">
               {type === "add" ? (
                 <Plus size={16} className="mr-2" />
               ) : (

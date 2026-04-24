@@ -26,6 +26,7 @@ import { MoreHorizontal, FileText, User, ArrowLeft, Printer, Pencil, Trash2 } fr
 import { Button } from "@/components/ui/button";
 import useFetch from "@/hooks/useFetch";
 import { SessionContext } from "@/contexts/SessionContext";
+import logo from "@/assets/logo.png";
 
 type ViewState = "list" | "receipt" | "edit";
 
@@ -53,6 +54,8 @@ export default function PaymentHistory() {
   const navigate = useNavigate();
   const { currentSession } = useContext(SessionContext);
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const { data: schoolSettings } = useFetch("/account-setting");
+  const { data: schoolProfile } = useFetch("/school-profile");
 
   const listUrl = currentSession?._id ? `/receipt-session/${currentSession._id}` : null;
   const { data, loading: listLoading, error, reFetch } = useFetch(listUrl);
@@ -81,6 +84,28 @@ export default function PaymentHistory() {
         : {};
     return { ...selectedPayment, ...extra } as PaymentRow;
   }, [selectedPayment, receiptData]);
+
+  const school = useMemo(() => {
+    const settings = Array.isArray(schoolSettings) ? schoolSettings[0] : schoolSettings;
+    const profile = Array.isArray(schoolProfile) ? schoolProfile[0] : schoolProfile;
+    const rawLogo = settings?.schoolLogo || settings?.logo || settings?.logoUrl || "";
+    const rawSignature = profile?.signature || "";
+
+    return {
+      name: settings?.name || "School Name",
+      address: settings?.address || "",
+      email: settings?.email || "",
+      logo:
+        rawLogo && !String(rawLogo).startsWith("http")
+          ? `${apiUrl}/${String(rawLogo).replace(/^\//, "")}`
+          : rawLogo || logo,
+      signature:
+        rawSignature && !String(rawSignature).startsWith("http")
+          ? `${apiUrl}/${String(rawSignature).replace(/^\//, "")}`
+          : rawSignature,
+      principalName: profile?.principalName || "Accounts Office",
+    };
+  }, [apiUrl, schoolProfile, schoolSettings]);
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -147,13 +172,7 @@ export default function PaymentHistory() {
   // --- EDIT VIEW ---
   if (view === "edit" && selectedPayment) {
     return (
-      <div className="p-6 space-y-6">
-        <Button
-          variant="ghost"
-          onClick={() => { setView("list"); setSelectedPayment(null); }}
-          className="text-muted-foreground hover:text-primary gap-2">
-          <ArrowLeft size={16} /> Back to Payment History
-        </Button>
+      <div className="p-6">
         <FormShell title="Payment Record" type="edit" loading={loading} onSubmit={handleEditSubmit}>
           <div className="space-y-2">
             <Label className="text-[10px] font-bold uppercase text-slate-400">Student Name</Label>
@@ -227,12 +246,13 @@ export default function PaymentHistory() {
                 <p className="text-xs font-bold uppercase text-muted-foreground">Receipt Number</p>
                 <CardTitle className="text-primary text-lg font-bold">{receiptNo}</CardTitle>
               </div>
-              <span className="px-3 py-1 rounded-full text-[10px] font-bold border bg-primary/10 text-primary border-primary/20">
-                RECEIPT
-              </span>
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-black bg-white p-1">
+                <img src={school.logo} alt="School Logo" className="h-full w-full object-contain" />
+              </div>
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-primary">Edana Academy</h2>
+              <h2 className="text-2xl font-bold text-primary">{school.name}</h2>
+              <p className="text-sm text-black">{[school.address, school.email].filter(Boolean).join(" • ")}</p>
               <p className="text-sm text-slate-500">14, Babs Ladipo Street, Lagos • support@edana.com</p>
             </div>
           </CardHeader>
@@ -277,7 +297,10 @@ export default function PaymentHistory() {
               </div>
               <div className="text-right">
                 <p className="text-xs font-bold uppercase text-muted-foreground">Signature</p>
-                <p className="text-primary font-semibold">Accounts Office</p>
+                {school.signature ? (
+                  <img src={school.signature} alt="School Signature" className="ml-auto h-12 object-contain" />
+                ) : null}
+                <p className="text-primary font-semibold">{school.principalName}</p>
               </div>
             </div>
           </CardContent>
@@ -373,13 +396,13 @@ export default function PaymentHistory() {
                             <DropdownMenuItem className="gap-2" onClick={() => { setSelectedPayment(item); setView("receipt"); }}>
                               <FileText size={14} /> View Receipt
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2" onClick={() => openEdit(item)}>
-                              <Pencil size={14} /> Edit
+                            <DropdownMenuItem className="gap-2 text-[#004aaa] focus:bg-[#004aaa]/10 focus:text-[#004aaa]" onClick={() => openEdit(item)}>
+                              <Pencil size={14} className="text-[#004aaa]" /> Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="gap-2 text-destructive focus:text-destructive"
+                              className="gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
                               onClick={() => { setSelectedPayment(item); setIsDeleteOpen(true); }}>
-                              <Trash2 size={14} /> Delete
+                              <Trash2 size={14} className="text-red-600" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

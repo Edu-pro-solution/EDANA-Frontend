@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useContext, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,9 +28,9 @@ import {
   Trash2,
   FileText,
   User,
-  ArrowLeft,
   Eye,
-  EyeOff
+  EyeOff,
+  CreditCard,
 } from "lucide-react";
 import { DataTablePagination } from "@/components/DataTablePagination";
 import { DeleteModal } from "@/components/DeleteModal";
@@ -46,24 +46,18 @@ const StudentInformation = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
-
-  // UI States
   const [view, setView] = useState<"list" | "edit">("list");
   const [loading, setLoading] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const itemsPerPage = 10;
 
-  // Data States
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  
-  // Fetch real students — /students/:sessionId/:classname
   const { data, loading: fetchLoading, reFetch } = useFetch(
     currentSession && classId ? `/students/${currentSession._id}/${classId.toUpperCase()}` : null
   );
-
   const allStudents = Array.isArray(data) ? data : [];
-  
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentStudents = allStudents.slice(indexOfFirstItem, indexOfLastItem);
@@ -72,6 +66,7 @@ const StudentInformation = () => {
 
   const handleEditClick = (student: any) => {
     setSelectedStudent(student);
+    setNewPassword("");
     setView("edit");
   };
 
@@ -81,25 +76,23 @@ const StudentInformation = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("jwtToken");
-      const updatedData = {
-        studentName: selectedStudent.studentName,
-        address: selectedStudent.address,
-        AdmNo: selectedStudent.AdmNo,
-        email: selectedStudent.email,
-        phone: selectedStudent.phone,
-        password: newPassword || selectedStudent.password,
-      };
-
       await axios.put(
         `${apiUrl}/api/put-students/${selectedStudent._id}`,
-        updatedData,
+        {
+          studentName: selectedStudent.studentName,
+          address: selectedStudent.address,
+          AdmNo: selectedStudent.AdmNo,
+          email: selectedStudent.email,
+          phone: selectedStudent.phone,
+          password: newPassword || selectedStudent.password,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       toast.success("Student updated successfully");
       setView("list");
       reFetch();
-    } catch (err) {
-      console.error("Error updating student:", err);
+    } catch (error) {
+      console.error("Error updating student:", error);
       toast.error("Failed to update student");
     } finally {
       setLoading(false);
@@ -107,127 +100,83 @@ const StudentInformation = () => {
   };
 
   const handleDelete = async () => {
-    if (!selectedStudent || !currentSession) return;
+    if (!selectedStudent) return;
     setLoading(true);
     try {
       const token = localStorage.getItem("jwtToken");
-      await axios.delete(
-        `${apiUrl}/api/users/${selectedStudent._id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.delete(`${apiUrl}/api/users/${selectedStudent._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       toast.success("Student deleted successfully");
       setIsDeleteOpen(false);
       reFetch();
-    } catch (err) {
-      console.error("Error deleting student:", err);
+    } catch (error) {
+      console.error("Error deleting student:", error);
       toast.error("Failed to delete student");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- EDIT VIEW ---
-  if (view === "edit") {
+  if (view === "edit" && selectedStudent) {
     return (
       <div className="p-6 space-y-6">
-        <Button
-          variant="ghost"
-          onClick={() => setView("list")}
-          className="text-slate-500 hover:text-[#004aaa] gap-2">
-          <ArrowLeft size={16} /> Back to Student List
-        </Button>
-
         <FormShell
           title="Student"
           type="edit"
           loading={loading}
-          onSubmit={handleFormSubmit}>
+          onSubmit={handleFormSubmit}
+          onClose={() => {
+            setView("list");
+            setSelectedStudent(null);
+          }}
+        >
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase text-slate-400">
-              Full Name
-            </Label>
-            <Input
-              defaultValue={selectedStudent?.studentName}
-              onChange={(e) => setSelectedStudent({...selectedStudent, studentName: e.target.value})}
-              placeholder="e.g. Akinola Al-ameen"
-            />
+            <Label className="text-[10px] font-bold uppercase text-black">Full Name</Label>
+            <Input value={selectedStudent.studentName || ""} onChange={(e) => setSelectedStudent({ ...selectedStudent, studentName: e.target.value })} />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase text-slate-400">
-              Admission Number
-            </Label>
-            <Input
-              defaultValue={selectedStudent?.AdmNo}
-              onChange={(e) => setSelectedStudent({...selectedStudent, AdmNo: e.target.value})}
-              placeholder="ACE/2026/..."
-            />
+            <Label className="text-[10px] font-bold uppercase text-black">Admission Number</Label>
+            <Input value={selectedStudent.AdmNo || ""} onChange={(e) => setSelectedStudent({ ...selectedStudent, AdmNo: e.target.value })} />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase text-slate-400">
-              Email Address
-            </Label>
-            <Input
-              type="email"
-              defaultValue={selectedStudent?.email}
-              onChange={(e) => setSelectedStudent({...selectedStudent, email: e.target.value})}
-              placeholder="student@example.com"
-            />
+            <Label className="text-[10px] font-bold uppercase text-black">Email Address</Label>
+            <Input type="email" value={selectedStudent.email || ""} onChange={(e) => setSelectedStudent({ ...selectedStudent, email: e.target.value })} />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase text-slate-400">
-              Phone Number
-            </Label>
-            <Input 
-              defaultValue={selectedStudent?.phone} 
-              onChange={(e) => setSelectedStudent({...selectedStudent, phone: e.target.value})}
-              placeholder="080..." 
-            />
+            <Label className="text-[10px] font-bold uppercase text-black">Phone Number</Label>
+            <Input value={selectedStudent.phone || ""} onChange={(e) => setSelectedStudent({ ...selectedStudent, phone: e.target.value })} />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase text-slate-400">
-              Parent/Guardian Name
-            </Label>
-            <Input
-              defaultValue={selectedStudent?.parent}
-              placeholder="Mr/Mrs..."
-            />
+            <Label className="text-[10px] font-bold uppercase text-black">Parent/Guardian Name</Label>
+            <Input value={selectedStudent.parentsName || ""} onChange={(e) => setSelectedStudent({ ...selectedStudent, parentsName: e.target.value })} />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase text-slate-400">
-              Date of Birth
-            </Label>
-            <Input type="date" defaultValue={selectedStudent?.dob} />
+            <Label className="text-[10px] font-bold uppercase text-black">Date of Birth</Label>
+            <Input type="date" value={selectedStudent.birthday ? String(selectedStudent.birthday).split("T")[0] : ""} onChange={(e) => setSelectedStudent({ ...selectedStudent, birthday: e.target.value })} />
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <Label className="text-[10px] font-bold uppercase text-slate-400">
-              Home Address
-            </Label>
-            <Input
-              defaultValue={selectedStudent?.address}
-              onChange={(e) => setSelectedStudent({...selectedStudent, address: e.target.value})}
-              placeholder="Full residential address"
-            />
+            <Label className="text-[10px] font-bold uppercase text-black">Home Address</Label>
+            <Input value={selectedStudent.address || ""} onChange={(e) => setSelectedStudent({ ...selectedStudent, address: e.target.value })} />
           </div>
+
           <div className="space-y-2 md:col-span-2">
-            <Label className="text-[10px] font-bold uppercase text-slate-400">
-              New Password
-            </Label>
-            <div className="relative ">
+            <Label className="text-[10px] font-bold uppercase text-black">New Password</Label>
+            <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
-                placeholder="********"
-                className="pr-10 border-slate-200 focus:border-[#004aaa]"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Leave blank to keep current password"
+                className="pr-10 border-black"
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#004aaa] transition-colors">
+              <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="absolute right-3 top-1/2 -translate-y-1/2 text-black hover:text-primary">
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
@@ -237,116 +186,79 @@ const StudentInformation = () => {
     );
   }
 
-  // --- LIST VIEW ---
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-end print:hidden">
         <div>
-          <h2 className="text-2xl font-bold text-[#004aaa]">
-            Student Information - {classId?.toUpperCase()}
-          </h2>
-          <p className="text-sm text-slate-500">
-            Managing {allStudents.length} students
-          </p>
+          <h2 className="text-2xl font-bold text-primary">Student Information - {classId?.toUpperCase()}</h2>
+          <p className="text-sm text-black">Managing {allStudents.length} students</p>
         </div>
         <div className="flex gap-3">
-          <Button
-            onClick={() => navigate("/student/admit")}
-            className="bg-[#004aaa] gap-2">
+          <Button onClick={() => navigate("/student/admit")} className="gap-2 bg-primary hover:bg-primary/90">
             <Plus size={16} /> Add Student
           </Button>
-          <Button
-            variant="outline"
-            onClick={handlePrint}
-            className="gap-2 border-slate-300">
+          <Button variant="outline" onClick={handlePrint} className="gap-2 border-black text-black hover:bg-primary/10">
             <Printer size={16} /> Print List
           </Button>
         </div>
       </div>
 
-      <Card className="border-none shadow-sm ring-1 ring-slate-200 overflow-hidden print:shadow-none print:ring-0">
+      <Card className="overflow-hidden border border-black shadow-sm print:shadow-none">
         <CardContent className="p-0 printable-area">
           <Table>
-            <TableHeader className="bg-[#E8EBF3] print:bg-slate-100">
+            <TableHeader className="bg-primary/10 print:bg-white">
               <TableRow>
-                <TableHead className="pl-6 font-bold text-[#004aaa]">
-                  S/N
-                </TableHead>
-                <TableHead className="font-bold text-[#004aaa]">
-                  Adm No
-                </TableHead>
-                <TableHead className="font-bold text-[#004aaa]">Name</TableHead>
-                <TableHead className="font-bold text-[#004aaa] print:hidden">
-                  Email
-                </TableHead>
-                <TableHead className="text-right pr-6 font-bold text-[#004aaa] print:hidden">
-                  Action
-                </TableHead>
+                <TableHead className="pl-6 font-bold text-primary">S/N</TableHead>
+                <TableHead className="font-bold text-primary">Adm No</TableHead>
+                <TableHead className="font-bold text-primary">Name</TableHead>
+                <TableHead className="font-bold text-primary print:hidden">Email</TableHead>
+                <TableHead className="pr-6 text-right font-bold text-primary print:hidden">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fetchLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10">
-                    <div className="flex justify-center items-center gap-2">
-                      <div className="animate-spin h-4 w-4 border-2 border-[#004aaa] border-t-transparent rounded-full" />
-                      Loading students...
-                    </div>
-                  </TableCell>
+                  <TableCell colSpan={5} className="py-10 text-center text-black">Loading students...</TableCell>
                 </TableRow>
               ) : currentStudents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-slate-500">
-                    No students found in this class.
-                  </TableCell>
+                  <TableCell colSpan={5} className="py-10 text-center text-black">No students found in this class.</TableCell>
                 </TableRow>
               ) : (
                 currentStudents.map((student, index) => (
-                  <TableRow
-                    key={student._id}
-                    className="print:border-b hover:bg-slate-50/50">
+                  <TableRow key={student._id} className="print:border-b hover:bg-primary/5">
                     <TableCell className="pl-6">{indexOfFirstItem + index + 1}</TableCell>
-                    <TableCell className="font-bold">{student.AdmNo}</TableCell>
-                    <TableCell className="text-blue-600 font-medium">
-                      {student.studentName}
-                    </TableCell>
-                    <TableCell className="print:hidden text-slate-600">
-                      {student.email}
-                    </TableCell>
-                    <TableCell className="text-right pr-6 print:hidden">
+                    <TableCell className="font-bold text-black">{student.AdmNo}</TableCell>
+                    <TableCell className="font-medium text-primary">{student.studentName}</TableCell>
+                    <TableCell className="print:hidden text-black">{student.email}</TableCell>
+                    <TableCell className="pr-6 text-right print:hidden">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
                             <MoreHorizontal size={16} />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[180px]">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              navigate(`/student_mark_sheet/${student._id}`)
-                            }
-                            className="gap-2">
+                        <DropdownMenuContent align="end" className="w-[200px]">
+                          <DropdownMenuItem onClick={() => navigate(`/student_mark_sheet/${student._id}`)} className="gap-2">
                             <FileText size={14} /> Mark Sheet
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleEditClick(student)}
-                            className="gap-2 cursor-pointer">
-                            <Pencil size={14} /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              navigate(`/student_profile/${student._id}`)
-                            }
-                            className="gap-2">
+                          <DropdownMenuItem onClick={() => navigate(`/student_profile/${student._id}`)} className="gap-2">
                             <User size={14} /> Profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/student/id-card/${student._id}`)} className="gap-2">
+                            <CreditCard size={14} /> ID Card
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditClick(student)} className="gap-2 text-[#004aaa] focus:bg-[#004aaa]/10 focus:text-[#004aaa]">
+                            <Pencil size={14} className="text-[#004aaa]" /> Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => {
                               setSelectedStudent(student);
                               setIsDeleteOpen(true);
                             }}
-                            className="text-red-600 gap-2">
-                            <Trash2 size={14} /> Delete
+                            className="gap-2 text-red-600 focus:bg-red-50 focus:text-red-600"
+                          >
+                            <Trash2 size={14} className="text-red-600" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -360,12 +272,7 @@ const StudentInformation = () => {
       </Card>
 
       <div className="print:hidden">
-        <DataTablePagination
-          totalItems={allStudents.length}
-          itemsPerPage={itemsPerPage}
-          currentPage={currentPage}
-          onPageChange={setCurrentPage}
-        />
+        <DataTablePagination totalItems={allStudents.length} itemsPerPage={itemsPerPage} currentPage={currentPage} onPageChange={setCurrentPage} />
       </div>
 
       <DeleteModal

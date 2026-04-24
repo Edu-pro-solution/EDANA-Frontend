@@ -215,6 +215,10 @@ export default function ReportCard({ termLabel }: Props) {
         const matchedExam = exams.find((e: any) =>
           (e.name || "").toLowerCase().includes(termKeyword),
         );
+        const profileTerm =
+          termLabel.toLowerCase() === "cumulative"
+            ? "THIRD TERM"
+            : termLabel.toUpperCase();
 
         return Promise.allSettled([
           axios.get(`${apiUrl}/api/get-students/${id}/${currentSession._id}`, {
@@ -225,7 +229,13 @@ export default function ReportCard({ termLabel }: Props) {
             { headers: authHeaders },
           ),
           axios.get(`${apiUrl}/api/account-setting`, { headers: authHeaders }),
-          axios.get(`${apiUrl}/api/setting`, { headers: authHeaders }),
+          axios.get(`${apiUrl}/api/setting`, {
+            params: {
+              sessionId: currentSession._id,
+              term: encodeURIComponent(profileTerm),
+            },
+            headers: authHeaders,
+          }),
           matchedExam
             ? axios.get(`${apiUrl}/api/get-all-psy/${matchedExam._id}`, {
                 headers: authHeaders,
@@ -268,7 +278,13 @@ export default function ReportCard({ termLabel }: Props) {
 
         if (profileRes.status === "fulfilled") {
           const d = profileRes.value.data?.data || profileRes.value.data;
-          setProfile(Array.isArray(d) ? (d[0] ?? {}) : (d ?? {}));
+          const raw: any = Array.isArray(d) ? (d[0] ?? {}) : (d ?? {});
+          const signatureRaw = raw.signature || "";
+          const signatureFull =
+            signatureRaw && !signatureRaw.startsWith("http")
+              ? `${apiUrl}/${signatureRaw.replace(/^\//, "")}`
+              : signatureRaw;
+          setProfile({ ...raw, signature: signatureFull });
         }
 
         if (psyRes.status === "fulfilled") {
@@ -517,12 +533,14 @@ export default function ReportCard({ termLabel }: Props) {
             <p className="text-muted-foreground">Class Teacher</p>
           </div>
           <div className="space-y-8">
-            {profile.signature && (
+            {profile.signature ? (
               <img
                 src={profile.signature}
                 alt="Principal Signature"
                 className="h-10 object-contain mx-auto"
               />
+            ) : (
+              <div className="h-10" />
             )}
             <div className="border-b border-border" />
             <p className="text-muted-foreground">

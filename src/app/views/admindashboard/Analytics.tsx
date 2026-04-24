@@ -1,120 +1,158 @@
 import React, { useContext, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowRight, Bell, GraduationCap, Users, Users2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, User, Users2, Users, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import useFetch from "@/hooks/useFetch";
 import { SessionContext } from "@/contexts/SessionContext";
 
-const Dashboard = () => {
+type StatCard = {
+  title: string;
+  subtitle: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+};
+
+const countItems = (value: unknown) => (Array.isArray(value) ? value.length : 0);
+
+export default function Dashboard() {
   const { currentSession } = useContext(SessionContext);
-  const sid = currentSession?._id;
+  const navigate = useNavigate();
+  const sessionId = currentSession?._id;
 
-  // Each role is fetched from GET /api/users/:role/:sessionId
-  const { data: rawStudents } = useFetch(sid ? `/users/student/${sid}` : null);
-  const { data: rawTeachers } = useFetch(sid ? `/users/teacher/${sid}` : null);
-  const { data: rawParents }  = useFetch(sid ? `/users/parent/${sid}` : null);
-  const { data: rawAdmins }   = useFetch(sid ? `/users/admin/${sid}` : null);
+  const { data: rawStudents } = useFetch(sessionId ? `/users/student/${sessionId}` : null);
+  const { data: rawTeachers } = useFetch(sessionId ? `/users/teacher/${sessionId}` : null);
+  const { data: rawParents } = useFetch(sessionId ? `/users/parent/${sessionId}` : null);
+  const { data: notices } = useFetch(sessionId ? `/get-all-notices/${sessionId}` : null);
 
-  // Notices from the real noticeboard API
-  const { data: rawNotices } = useFetch(sid ? `/get-all-notices/${sid}` : null);
-  const notices = useMemo(() => Array.isArray(rawNotices) ? rawNotices : [], [rawNotices]);
+  const stats = useMemo<StatCard[]>(
+    () => [
+      {
+        title: "Students",
+        subtitle: "total students",
+        value: countItems(rawStudents),
+        icon: GraduationCap,
+        href: "/student/admit",
+      },
+      {
+        title: "Teachers",
+        subtitle: "total teachers",
+        value: countItems(rawTeachers),
+        icon: Users2,
+        href: "/teacher",
+      },
+      {
+        title: "Parents",
+        subtitle: "total parents",
+        value: countItems(rawParents),
+        icon: Users,
+        href: "/parents",
+      },
+      {
+        title: "Notice Board",
+        subtitle: "active notices",
+        value: countItems(notices),
+        icon: Bell,
+        href: "/notices",
+      },
+    ],
+    [notices, rawParents, rawStudents, rawTeachers]
+  );
 
-  const count = (d: unknown) =>
-    Array.isArray(d) ? d.length : typeof d === "number" ? d : 0;
+  const latestNotices = Array.isArray(notices) ? notices.slice(0, 3) : [];
 
-  const statCardsData = [
-    { title: "Total Students", value: count(rawStudents), icon: User },
-    { title: "Total Teachers", value: count(rawTeachers), icon: Users2 },
-    { title: "Total Parents",  value: count(rawParents),  icon: Users },
-    { title: "Number of Admins", value: count(rawAdmins), icon: ShieldCheck },
-  ];
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="rounded-2xl border border-black bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#004aaa]">
+              Admin Dashboard
+            </p>
+            <h1 className="text-3xl font-bold text-black">School Overview</h1>
+            <p className="text-sm text-black">
+              Session: {currentSession?.name || "No active session selected"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-black bg-[#004aaa] px-4 py-3 text-white">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em]">Current Session</p>
+            <p className="text-lg font-bold">{currentSession?.name || "Not Set"}</p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        {statCardsData.map((card) => (
-          <Card key={card.title} className="hover:shadow-md transition-shadow">
-            <CardContent className="flex flex-col items-center justify-center p-3 sm:p-4">
-              <div className="flex items-center justify-between mb-2">
-                <card.icon className="h-5 w-5 text-primary" />
-              </div>
-              <p className="text-2xl font-bold">{card.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{card.title}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Event Calendar</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center">
-            <Calendar />
-          </CardContent>
-        </Card>
-
-        {/* <Card className="lg:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Recruitment Pipeline</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recruitmentPipelineData.map((item) => (
-                <div key={item.stage} className="flex items-center gap-3">
-                  <div className="w-24 text-xs text-muted-foreground">{item.stage}</div>
-                  <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary rounded-full flex items-center justify-end pr-2"
-                      style={{ width: `${(item.count / 129) * 100}%` }}
-                    >
-                      <span className="text-[10px] text-primary-foreground font-medium">{item.count}</span>
+      <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+        <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            {stats.map((item) => (
+              <Card key={item.title} className="border border-black bg-white shadow-sm">
+                <CardContent className="flex items-center justify-between p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-black bg-[#004aaa] text-white">
+                      <item.icon className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-black">{item.value}</p>
+                      <p className="text-sm font-semibold text-black">{item.title}</p>
+                      <p className="text-xs uppercase tracking-[0.18em] text-[#004aaa]">{item.subtitle}</p>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card> */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => navigate(item.href)}
+                    className="h-10 w-10 border-black text-[#004aaa] hover:bg-[#004aaa] hover:text-white"
+                  >
+                    <ArrowRight className="h-5 w-5" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-        <Card className="lg:col-span-3">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base text-[#004aaa]">Notice Board</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {notices.length > 0 ? (
-                notices.slice(0, 6).map((notice: any) => (
-                  <div key={notice._id} className="flex items-start gap-3 border-b border-slate-50 pb-3 last:border-0 last:pb-0">
-                    <div className="mt-0.5 h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                      <Clock className="h-4 w-4 text-[#004aaa]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex justify-between items-start gap-2">
-                        <p className="text-xs font-bold text-[#004aaa] truncate line-clamp-1">{notice.notice || notice.title || "—"}</p>
-                        <p className="text-[10px] text-muted-foreground whitespace-nowrap">
-                          {notice.date ? new Date(notice.date).toLocaleDateString() : notice.createdAt ? new Date(notice.createdAt).toLocaleDateString() : ""}
+          <Card className="border border-black bg-white shadow-sm">
+            <CardHeader className="border-b border-black">
+              <CardTitle className="text-base font-bold text-[#004aaa]">Recent Notice Board</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-6">
+              {latestNotices.length === 0 ? (
+                <p className="text-sm text-black">No notices yet.</p>
+              ) : (
+                latestNotices.map((notice: any) => (
+                  <div key={notice._id || notice.title} className="rounded-xl border border-black bg-white p-4">
+                    <div className="flex flex-col gap-1 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <p className="font-bold text-black">{notice.title || "Notice"}</p>
+                        <p className="mt-1 text-sm text-black">
+                          {notice.notice || notice.message || notice.description || "No notice body provided."}
+                        </p>
+                        <p className="mt-2 text-[11px] font-semibold text-[#004aaa]">
+                          Posted by: {notice.posted_by || notice.postedBy || "Admin"}
                         </p>
                       </div>
-                      <p className="text-[10px] font-medium text-blue-600 mt-1">
-                        By: {notice.posted_by || notice.postedBy || "Admin"}
-                      </p>
+                      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#004aaa]">
+                        {notice.date ? new Date(notice.date).toLocaleDateString() : "Notice"}
+                      </span>
                     </div>
                   </div>
                 ))
-              ) : (
-                <p className="text-xs text-muted-foreground italic text-center py-6">No notices available</p>
               )}
-            </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="border border-black bg-white shadow-sm">
+          <CardHeader className="border-b border-black">
+            <CardTitle className="text-base font-bold text-[#004aaa]">Academic Calendar</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <Calendar className="w-full rounded-xl border border-black" />
           </CardContent>
         </Card>
       </div>
     </div>
   );
-};
-
-export default Dashboard;
+}
