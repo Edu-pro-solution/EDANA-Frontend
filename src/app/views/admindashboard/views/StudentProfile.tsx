@@ -1,34 +1,40 @@
 import useFetch from "@/hooks/useFetch";
-import React from "react";
+import { useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { SessionContext } from "@/contexts/SessionContext";
 
 export default function StudentProfile() {
-  useFetch("/sessions");
-
   const { id } = useParams();
   const navigate = useNavigate();
+  const { currentSession } = useContext(SessionContext);
+  const { data: rawStudent, loading } = useFetch(
+    id && currentSession?._id ? `/get-students/${id}/${currentSession._id}` : null
+  );
 
-  // Mock student lookup - this would eventually be an API call
-  const student = {
-    name: "Akinola Al-ameen",
-    admNo: "Hlhs12345",
-    email: "akinola@gmail.com",
-    class: "JS1",
-    address: "14, Babs Ladipo Street, Lagos",
-    dob: "12/05/2012",
-    parent: "Mr. Akinola",
+  const student = rawStudent
+    ? Array.isArray(rawStudent)
+      ? (rawStudent as any[])[0]
+      : (rawStudent as Record<string, any>)
+    : null;
+
+  const studentName = student?.studentName || student?.username || student?.name || "Student";
+  const formatDate = (value?: string) => {
+    if (!value) return "Not provided";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
   };
 
   const info = [
-    { label: "Admission Number", value: student.admNo },
-    { label: "Current Class", value: student.class },
-    { label: "Email Address", value: student.email },
-    { label: "Home Address", value: student.address },
-    { label: "Parent/Guardian", value: student.parent },
-    { label: "Date of Birth", value: student.dob },
+    { label: "Admission Number", value: student?.AdmNo || "Not provided" },
+    { label: "Current Class", value: student?.classname || "Not provided" },
+    { label: "Email Address", value: student?.email || "Not provided" },
+    { label: "Home Address", value: student?.address || "Not provided" },
+    { label: "Parent/Guardian", value: student?.parentsName || student?.parent || "Not provided" },
+    { label: "Date of Birth", value: formatDate(student?.birthday || student?.dob) },
+    { label: "Phone Number", value: student?.phone || "Not provided" },
   ];
 
   return (
@@ -36,31 +42,39 @@ export default function StudentProfile() {
       <Button
         variant="ghost"
         onClick={() => navigate(-1)}
-        className="gap-2 text-slate-500 hover:text-[#004aaa]">
+        className="gap-2 text-black hover:text-primary">
         <ArrowLeft size={18} /> Back to Students
       </Button>
 
       <div className="flex justify-between items-center max-w-4xl">
-        <h2 className="text-[#004aaa] text-2xl font-bold">Student Profile</h2>
+        <h2 className="text-primary text-2xl font-bold">Student Profile</h2>
       </div>
 
-      <Card className="max-w-4xl border-none shadow-sm ring-1 ring-slate-200">
-        <CardHeader className="bg-slate-50/50 border-b">
-          <CardTitle className="text-[#004aaa] text-lg font-bold">
-            {student.name}
+      <Card className="max-w-4xl border border-black shadow-sm">
+        <CardHeader className="bg-white border-b border-black">
+          <CardTitle className="text-primary text-lg font-bold">
+            {loading ? "Loading student..." : studentName}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-8 space-y-6">
-          {info.map((item) => (
-            <div
-              key={item.label}
-              className="grid grid-cols-[220px_1fr] items-center border-b border-slate-50 pb-4">
-              <span className="text-slate-500 font-semibold text-xs uppercase tracking-wider">
-                {item.label}
-              </span>
-              <span className="text-[#004aaa] font-bold">{item.value}</span>
-            </div>
-          ))}
+          {!id || !currentSession?._id ? (
+            <p className="text-sm text-black">Student profile is unavailable because the student or session could not be found.</p>
+          ) : loading ? (
+            <p className="text-sm text-black">Loading student profile...</p>
+          ) : !student ? (
+            <p className="text-sm text-black">No student record was found for this profile.</p>
+          ) : (
+            info.map((item) => (
+              <div
+                key={item.label}
+                className="grid grid-cols-[220px_1fr] items-center border-b border-black pb-4">
+                <span className="text-black font-semibold text-xs uppercase tracking-wider">
+                  {item.label}
+                </span>
+                <span className="text-primary font-bold">{item.value}</span>
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
     </div>
