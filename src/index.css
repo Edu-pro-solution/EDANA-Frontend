@@ -98,6 +98,18 @@
 }
 
 @media print {
+  @page {
+    margin: 6mm;
+    size: auto;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
   body * { visibility: hidden; }
 
   .printable-receipt,
@@ -108,15 +120,20 @@
   }
 
   .printable-receipt {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
   }
 
   .printable-area {
-    position: static;
-    width: 100%;
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
     overflow: visible !important;
   }
 
@@ -134,5 +151,31 @@
     border: 1px solid #000 !important;
     color: #000 !important;
     background: #fff !important;
+  }
+
+  .print-preserve-color,
+  .print-preserve-color * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-id-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    break-inside: avoid;
+  }
+
+  .print-id-sidebar {
+    background: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  .print-id-accent {
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  .print-id-surface {
+    background: rgba(255, 255, 255, 0.92) !important;
   }
 }

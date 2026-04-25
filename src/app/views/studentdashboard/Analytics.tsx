@@ -1,5 +1,5 @@
-import { useContext, useMemo, useEffect, useState } from "react";
-import axios from "axios";
+import { useContext, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,8 @@ import {
   BookOpen,
   Calendar as CalendarIcon,
   Clock,
+  CreditCard,
   Megaphone,
-  Star,
   Users,
 } from "lucide-react";
 
@@ -43,7 +43,7 @@ const StudentDashboard = () => {
   const { currentSession } = useContext(SessionContext);
   const { user } = useAuth();
   const { data: noticesData } = useFetch(
-    currentSession ? `/get-all-notices/${currentSession._id}` : null,
+    currentSession ? `/get-all-notices/${currentSession._id}` : null
   );
 
   const notices = useMemo(
@@ -51,7 +51,7 @@ const StudentDashboard = () => {
       Array.isArray(noticesData) && noticesData.length > 0
         ? (noticesData as NoticeRecord[])
         : fallbackNotices,
-    [noticesData],
+    [noticesData]
   );
 
   const userInfo = useMemo(() => {
@@ -61,77 +61,35 @@ const StudentDashboard = () => {
   }, [user]);
 
   const className = String(
-    userInfo?.classname || userInfo?.className || userInfo?.class || "",
+    userInfo?.classname || userInfo?.className || userInfo?.class || ""
   );
+  const studentId = String(userInfo?._id || userInfo?.id || "");
 
   const { data: classmatesData, loading: loadingClassmates } = useFetch(
     currentSession && className
       ? `/students/${currentSession._id}/${className}`
-      : null,
+      : null
   );
   const { data: subjectRows, loading: loadingSubjects } = useFetch(
     currentSession && className
       ? `/get-subject/${className}/${currentSession._id}`
-      : null,
-  );
-
-  const [averageGrade, setAverageGrade] = useState("—");
-  const [loadingGrade, setLoadingGrade] = useState(false);
-
-  useEffect(() => {
-    const userId = userInfo?._id || userInfo?.id;
-    const sessionId = currentSession?._id;
-    if (!userId || !sessionId) return;
-    const token = localStorage.getItem("jwtToken");
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-    setLoadingGrade(true);
-    axios.get(`${apiUrl}/api/get-scores-by-student/${userId}/${sessionId}`, { headers })
-      .then(({ data }) => {
-        const scores: any[] = data?.scores ?? [];
-        if (scores.length === 0) { setAverageGrade("—"); return; }
-        const total = scores.reduce((acc, s) => {
-          const t = Number(s.marksObtained ?? s.total) || (Number(s.testscore ?? 0) + Number(s.examscore ?? 0));
-          return acc + t;
-        }, 0);
-        const avg = Math.round(total / scores.length);
-        const grade = avg >= 70 ? "A" : avg >= 60 ? "B" : avg >= 50 ? "C" : avg >= 45 ? "D" : avg >= 40 ? "E" : "F";
-        setAverageGrade(grade);
-      })
-      .catch(() => setAverageGrade("—"))
-      .finally(() => setLoadingGrade(false));
-  }, [userInfo?._id, currentSession?._id]);
-
-  const stats = useMemo(
-    () => ({
-      classmates: Array.isArray(classmatesData) ? classmatesData.length : 0,
-      subjects: Array.isArray(subjectRows) ? subjectRows.length : 0,
-      averageGrade,
-    }),
-    [classmatesData, subjectRows, averageGrade],
+      : null
   );
 
   const statCards = [
     {
       title: "Classmates",
-      value: stats.classmates,
+      value: Array.isArray(classmatesData) ? classmatesData.length : 0,
       icon: Users,
       accent: "bg-blue-100 text-blue-700",
       isLoading: loadingClassmates,
     },
     {
       title: "Subjects",
-      value: stats.subjects,
+      value: Array.isArray(subjectRows) ? subjectRows.length : 0,
       icon: BookOpen,
       accent: "bg-indigo-100 text-indigo-700",
       isLoading: loadingSubjects,
-    },
-    {
-      title: "Average Grade",
-      value: stats.averageGrade,
-      icon: Star,
-      accent: "bg-rose-100 text-rose-700",
-      isLoading: loadingGrade,
     },
   ];
 
@@ -139,14 +97,14 @@ const StudentDashboard = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-[#004aaa]">Student Dashboard</h1>
-        <p className="text-sm text-slate-500 font-medium">
+        <p className="font-medium text-sm text-slate-500">
           {currentSession?.name
             ? `Current Session: ${currentSession.name}`
             : "Welcome to your student portal."}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {statCards.map((card) => (
           <Card
             key={card.title}
@@ -163,22 +121,58 @@ const StudentDashboard = () => {
                   <p className="text-sm font-semibold text-[#004aaa]">
                     {card.title}
                   </p>
-                  <p className="text-3xl font-black text-[#004aaa] mt-1">
-                    {card.isLoading ? "…" : card.value}
+                  <p className="mt-1 text-3xl font-black text-[#004aaa]">
+                    {card.isLoading ? "..." : card.value}
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
+
+        <Card className="overflow-hidden border-none shadow-sm ring-1 ring-slate-200">
+          <CardContent className="p-0">
+            <div className="grid min-h-[96px] grid-cols-1 sm:grid-cols-[44%_56%]">
+              <div className="flex min-h-[72px] items-center justify-center bg-emerald-100 py-3 text-emerald-700 sm:min-h-0 sm:py-0">
+                <CreditCard className="h-7 w-7" />
+              </div>
+              <div className="flex flex-col justify-center gap-3 px-4 py-4 sm:px-6">
+                <div>
+                  <p className="text-sm font-semibold text-[#004aaa]">
+                    Student ID Card
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    View and print your school ID card anytime.
+                  </p>
+                </div>
+                <Button
+                  asChild
+                  size="sm"
+                  className="w-fit bg-[#004aaa] hover:bg-[#004aaa]/90"
+                  disabled={!studentId}
+                >
+                  <Link
+                    to={
+                      studentId
+                        ? `/student/id-card/${studentId}`
+                        : "/student/dashboard/default"
+                    }
+                  >
+                    View ID Card
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-2">
         <Card className="border-none shadow-sm ring-1 ring-slate-200">
           <CardHeader className="border-b bg-slate-50/50">
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-[#004aaa] text-xl">
+              <CardTitle className="text-xl text-[#004aaa]">
                 Term Calendar
               </CardTitle>
             </div>
@@ -194,7 +188,7 @@ const StudentDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm ring-1 ring-slate-200 min-h-[420px]">
+        <Card className="min-h-[420px] border-none shadow-sm ring-1 ring-slate-200">
           <CardHeader className="flex flex-col gap-3 border-b bg-slate-50/50 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-orange-500" />
@@ -215,14 +209,14 @@ const StudentDashboard = () => {
               {notices.map((notice) => (
                 <div
                   key={notice._id || notice.id}
-                  className="flex gap-4 p-4 hover:bg-slate-50/60 transition-colors"
+                  className="flex gap-4 p-4 transition-colors hover:bg-slate-50/60"
                 >
                   <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#004aaa]">
                     <Megaphone className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
-                      <p className="text-sm font-semibold text-[#004aaa] leading-6">
+                      <p className="text-sm font-semibold leading-6 text-[#004aaa]">
                         {notice.notice || "No notice content"}
                       </p>
                       <span className="whitespace-nowrap text-[10px] text-slate-400">

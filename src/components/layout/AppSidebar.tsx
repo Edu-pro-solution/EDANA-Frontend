@@ -221,6 +221,12 @@ function buildTeacherNav(classes: any[]) {
       ],
     },
     {
+      label: "AI Tools",
+      items: [
+        { title: "Homework Review", url: "/teacher/dashboard/homework", icon: MessageSquareText, key: "homework" },
+      ],
+    },
+    {
       label: "Notice Board",
       items: [{ title: "Noticeboard", url: "/notices", icon: Info, key: "notice" }],
     },
@@ -228,7 +234,6 @@ function buildTeacherNav(classes: any[]) {
       label: "Material & Attendance",
       items: [
         { title: "Study Material", url: "/studymaterial", icon: Disc3, key: "studymaterial" },
-        { title: "Homework Review", url: "/teacher/dashboard/homework", icon: MessageSquareText, key: "homework" },
         { title: "Daily Attendance", url: "/dailyattend", icon: AlarmClock, key: "dailyattend" },
       ],
     },
@@ -268,7 +273,13 @@ function buildStudentNav(_classes: any[]) {
       label: "Online Exam",
       items: [
         { title: "Take Online Exam", url: "/student/dashboard/manage-online-exam", icon: Laptop, key: "onlinexam" },
-        { title: "Past Questions (JAMB)", url: "/student/dashboard/jamb-past-questions", icon: Disc3, key: "onlinexam" },
+      ],
+    },
+    {
+      label: "AI Tools",
+      items: [
+        { title: "Homework", url: "/student/dashboard/homework", icon: MessageSquareText, key: "homework" },
+        { title: "Past Questions (JAMB)", url: "https://cbt.edupro.com.ng", icon: Disc3, key: "onlinexam" },
       ],
     },
     {
@@ -276,7 +287,6 @@ function buildStudentNav(_classes: any[]) {
       items: [
         { title: "Payment History", url: "/student/dashboard/student-payment", icon: ReceiptText, key: "studentAccounting" },
         { title: "Study Material", url: "/student/dashboard/student-material", icon: BookCopy, key: "studymaterial" },
-        { title: "Homework", url: "/student/dashboard/homework", icon: MessageSquareText, key: "homework" },
       ],
     },
     {
