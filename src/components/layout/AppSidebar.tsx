@@ -29,128 +29,262 @@ const classId   = (c: any) => String(c?.name || c?.className || "");
 
 // ── nav builders ─────────────────────────────────────────────────────────────
 function buildAdminNav(classes: any[]) {
-  const classSubItems = classes.length > 0
-    ? classes.map((c) => ({ title: className(c), url: `/student/information/${classId(c)}` }))
-    : [
-        { title: "Class J.S.1", url: "/student/information/js1" },
-        { title: "Class J.S.2", url: "/student/information/js2" },
-        { title: "Class J.S.3", url: "/student/information/js3" },
-        { title: "Class S.S.1", url: "/student/information/ss1" },
-        { title: "Class S.S.2", url: "/student/information/ss2" },
-        { title: "Class S.S.3", url: "/student/information/ss3" },
-      ];
+  const classSubItems =
+    classes.length > 0
+      ? classes.map((c) => ({
+          title: className(c),
+          url: `/student/information/${classId(c)}`,
+        }))
+      : [{ title: "No classes yet. Add a class", url: "/class/manage" }];
 
-  const subjectSubItems = classes.length > 0
-    ? classes.map((c) => ({ title: className(c), url: `/subject/${classId(c)}` }))
-    : [
-        { title: "Class J.S.1", url: "/subject/js1" },
-        { title: "Class J.S.2", url: "/subject/js2" },
-        { title: "Class J.S.3", url: "/subject/js3" },
-        { title: "Class S.S.1", url: "/subject/ss1" },
-        { title: "Class S.S.2", url: "/subject/ss2" },
-        { title: "Class S.S.3", url: "/subject/ss3" },
-      ];
+  const subjectSubItems =
+    classes.length > 0
+      ? classes.map((c) => ({
+          title: className(c),
+          url: `/subject/${classId(c)}`,
+        }))
+      : [{ title: "No classes yet. Add a class", url: "/class/manage" }];
 
   return [
     {
       label: "Main",
       items: [
-        { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, key: "dashboard" },
+        {
+          title: "Dashboard",
+          url: "/dashboard",
+          icon: LayoutDashboard,
+          key: "dashboard",
+        },
         { title: "Admin", url: "/admin", icon: User2, key: "admin" },
       ],
     },
     {
       label: "Student",
       items: [
-        { title: "Admit Student", url: "/student/admit", icon: User, key: "admit-student" },
-        { title: "Bulk Upload", url: "/student/bulk-upload", icon: Upload, key: "bulk-student-upload" },
-        { title: "Student Information", icon: NotebookPen, key: "student-info", subItems: classSubItems },
-        { title: "Student Promotion", url: "/student/promotion", icon: BookCopy, key: "student-promotion" },
+        {
+          title: "Admit Student",
+          url: "/student/admit",
+          icon: User,
+          key: "admit-student",
+        },
+        {
+          title: "Bulk Upload",
+          url: "/student/bulk-upload",
+          icon: Upload,
+          key: "bulk-student-upload",
+        },
+        {
+          title: "Student Information",
+          icon: NotebookPen,
+          key: "student-info",
+          subItems: classSubItems,
+        },
+        {
+          title: "Student Promotion",
+          url: "/student/promotion",
+          icon: BookCopy,
+          key: "student-promotion",
+        },
       ],
     },
     {
       label: "Affective Psychomotor",
       items: [
-        { title: "Manage Category", url: "/psycho/category", icon: ListChecks, key: "psycho-category" },
-        { title: "Student Report", url: "/psycho/stu-report", icon: ListCheck, key: "psycho-report" },
+        {
+          title: "Manage Category",
+          url: "/psycho/category",
+          icon: ListChecks,
+          key: "psycho-category",
+        },
+        {
+          title: "Student Report",
+          url: "/psycho/stu-report",
+          icon: ListCheck,
+          key: "psycho-report",
+        },
       ],
     },
     {
       label: "Teacher",
-      items: [{ title: "Teachers", url: "/teacher", icon: User, key: "teacher" }],
+      items: [
+        { title: "Teachers", url: "/teacher", icon: User, key: "teacher" },
+      ],
     },
     {
       label: "Parents",
-      items: [{ title: "Parents", url: "/parents", icon: User, key: "parents" }],
+      items: [
+        { title: "Parents", url: "/parents", icon: User, key: "parents" },
+      ],
     },
     {
       label: "Notice Board",
-      items: [{ title: "Noticeboard", url: "/notices", icon: Info, key: "notice" }],
+      items: [
+        { title: "Noticeboard", url: "/notices", icon: Info, key: "notice" },
+      ],
     },
     {
       label: "Class",
       items: [
-        { title: "Manage Class", url: "/class/manage", icon: GraduationCap, key: "class" },
-        { title: "Academic Syllabus", url: "/class/syllabus", icon: GraduationCap, key: "class" },
+        {
+          title: "Manage Class",
+          url: "/class/manage",
+          icon: GraduationCap,
+          key: "class",
+        },
+        {
+          title: "Academic Syllabus",
+          url: "/class/syllabus",
+          icon: GraduationCap,
+          key: "class",
+        },
       ],
     },
     {
       label: "Subjects",
       items: [
-        { title: "Subject by Class", icon: BookOpen, key: "subject", subItems: subjectSubItems },
+        {
+          title: "Subject by Class",
+          icon: BookOpen,
+          key: "subject",
+          subItems: subjectSubItems,
+        },
       ],
     },
     {
       label: "Exam",
       items: [
-        { title: "Exam List", url: "/exam/list", icon: ListChecks, key: "exam-list" },
-        { title: "Exam Grades", url: "/exam/grades", icon: GraduationCap, key: "exam-grades" },
-        { title: "Manage Marks", url: "/exam/manage-marks", icon: FileEdit, key: "manage-marks" },
-        { title: "Tabulation Sheet", url: "/exam/tabulation", icon: TableProperties, key: "tabulation" },
-        { title: "On Screen Marking", url: "/exam/onscreenmarking", icon: CheckCheck, key: "onscreen-marking" },
+        {
+          title: "Exam List",
+          url: "/exam/list",
+          icon: ListChecks,
+          key: "exam-list",
+        },
+        {
+          title: "Exam Grades",
+          url: "/exam/grades",
+          icon: GraduationCap,
+          key: "exam-grades",
+        },
+        {
+          title: "Manage Marks",
+          url: "/exam/manage-marks",
+          icon: FileEdit,
+          key: "manage-marks",
+        },
+        {
+          title: "Tabulation Sheet",
+          url: "/exam/tabulation",
+          icon: TableProperties,
+          key: "tabulation",
+        },
+        {
+          title: "On Screen Marking",
+          url: "/exam/onscreenmarking",
+          icon: CheckCheck,
+          key: "onscreen-marking",
+        },
       ],
     },
     {
       label: "Online Exam",
       items: [
-        { title: "Create Online Exam", url: "/onlineexam/create", icon: Laptop, key: "onlinexam" },
-        { title: "Manage Online Exam", url: "/onlineexam/manage", icon: Laptop2, key: "onlinexam" },
+        {
+          title: "Create Online Exam",
+          url: "/onlineexam/create",
+          icon: Laptop,
+          key: "onlinexam",
+        },
+        {
+          title: "Manage Online Exam",
+          url: "/onlineexam/manage",
+          icon: Laptop2,
+          key: "onlinexam",
+        },
       ],
     },
     {
       label: "AI Tools",
       items: [
-        { title: "Curriculum Generator", url: "/curriculum", icon: Disc3, key: "curriculum" },
-        { title: "Generate Questions", url: "/gen-questions", icon: Disc3, key: "gen-questions" },
+        {
+          title: "Curriculum Generator",
+          url: "/curriculum",
+          icon: Disc3,
+          key: "curriculum",
+        },
+        {
+          title: "Generate Questions",
+          url: "/gen-questions",
+          icon: Disc3,
+          key: "gen-questions",
+        },
       ],
     },
     {
       label: "Past Questions",
       items: [
-        { title: "UTME", url: "https://cbt.edupro.com.ng/login", icon: Disc3, key: "past-questions" },
-        { title: "WAEC", url: "https://cbt.edupro.com.ng/login", icon: Disc3, key: "past-questions" },
+        {
+          title: "UTME",
+          url: "https://cbt.edupro.com.ng/login",
+          icon: Disc3,
+          key: "past-questions",
+        },
+        {
+          title: "WAEC",
+          url: "https://cbt.edupro.com.ng/login",
+          icon: Disc3,
+          key: "past-questions",
+        },
       ],
     },
     {
       label: "Accounting",
       items: [
-        { title: "Student Receipt", url: "/stu-receipt", icon: ReceiptText, key: "studentAccounting" },
-        { title: "Student Payments", url: "/stu-payments", icon: ReceiptText, key: "studentAccounting" },
+        {
+          title: "Student Receipt",
+          url: "/stu-receipt",
+          icon: ReceiptText,
+          key: "studentAccounting",
+        },
+        {
+          title: "Student Payments",
+          url: "/stu-payments",
+          icon: ReceiptText,
+          key: "studentAccounting",
+        },
       ],
     },
     {
       label: "Study Material",
-      items: [{ title: "Study Material", url: "/studymaterial", icon: Disc3, key: "studymaterial" }],
+      items: [
+        {
+          title: "Study Material",
+          url: "/studymaterial",
+          icon: Disc3,
+          key: "studymaterial",
+        },
+      ],
     },
     {
       label: "Daily Attendance",
-      items: [{ title: "Daily Attendance", url: "/dailyattend", icon: AlarmClock, key: "dailyattend" }],
+      items: [
+        {
+          title: "Daily Attendance",
+          url: "/dailyattend",
+          icon: AlarmClock,
+          key: "dailyattend",
+        },
+      ],
     },
     {
       label: "System",
       items: [
         { title: "Profile", url: "/profile", icon: User2, key: "settings" },
-        { title: "Settings", url: "/settings", icon: Settings, key: "settings" },
+        {
+          title: "Settings",
+          url: "/settings",
+          icon: Settings,
+          key: "settings",
+        },
         { title: "Account", url: "/account", icon: Pencil, key: "settings" },
       ],
     },
