@@ -81,6 +81,7 @@ import ParentDashboard from "./app/views/parentdashboard/Analytics";
 import ParentResults from "./app/views/parentdashboard/views/Results";
 import ParentMaterials from "./app/views/parentdashboard/views/Materials";
 import ParentHomework from "./app/views/parentdashboard/views/Homework";
+import BulkPrintReports from "./app/views/admindashboard/views/student/BulkPrintReports";
 
 const DashboardWrapper = () => {
   const { user } = useAuth();
@@ -175,6 +176,7 @@ const App = () => (
 
                 {/* ── Admin-only ── */}
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/bulk-print/:classId/:term" element={<BulkPrintReports />} />
                 <Route path="/inbox" element={<Inbox />} />
                 <Route path="/student/admit" element={<AdmitStudent />} />
                 <Route path="/student/bulk-upload" element={<BulkStudentUpload />} />

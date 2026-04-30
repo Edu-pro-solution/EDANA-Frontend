@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import { FormShell } from "@/components/ActionForm";
 import { toast } from "sonner";
 import {
@@ -188,20 +189,44 @@ const StudentInformation = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-end print:hidden">
-        <div>
-          <h2 className="text-2xl font-bold text-primary">Student Information - {classId?.toUpperCase()}</h2>
-          <p className="text-sm text-black">Managing {allStudents.length} students</p>
-        </div>
-        <div className="flex gap-3">
-          <Button onClick={() => navigate("/student/admit")} className="gap-2 bg-primary hover:bg-primary/90">
-            <Plus size={16} /> Add Student
-          </Button>
-          <Button variant="outline" onClick={handlePrint} className="gap-2 border-black text-black hover:bg-primary/10">
-            <Printer size={16} /> Print List
-          </Button>
-        </div>
-      </div>
+  <div className="flex justify-between items-end print:hidden">
+  <div>
+    <h2 className="text-2xl font-bold text-primary">Student Information - {classId?.toUpperCase()}</h2>
+    <p className="text-sm text-black">Managing {allStudents.length} students</p>
+  </div>
+
+  <div className="flex flex-wrap gap-2 justify-end">
+    <Button onClick={() => navigate("/student/admit")} className="gap-2 bg-primary hover:bg-primary/90">
+      <Plus size={16} /> Add Student
+    </Button>
+
+    <Button variant="outline" onClick={handlePrint} className="gap-2 border-black text-black hover:bg-primary/10">
+      <Printer size={16} /> Print List
+    </Button>
+
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="gap-2 border-black text-black hover:bg-primary/10">
+          <FileText size={16} /> Bulk Print Reports
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-[220px]">
+        <DropdownMenuItem onClick={() => navigate(`/bulk-print/${classId}/first-term`)} className="gap-2">
+          <FileText size={14} /> First Term Report Cards
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate(`/bulk-print/${classId}/second-term`)} className="gap-2">
+          <FileText size={14} /> Second Term Report Cards
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate(`/bulk-print/${classId}/third-term`)} className="gap-2">
+          <FileText size={14} /> Third Term Report Cards
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate(`/bulk-print/${classId}/cumulative`)} className="gap-2">
+          <FileText size={14} /> Cumulative Results
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </div>
+</div>
 
       <Card className="overflow-hidden border border-black shadow-sm print:shadow-none">
         <CardContent className="p-0 printable-area">
