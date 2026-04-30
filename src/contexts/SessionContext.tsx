@@ -27,21 +27,8 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-  const mockSession = {
-    _id: "mock-session-id",
-    name: "2023/2024 Academic Session",
-    startDate: "2023-09-01",
-    endDate: "2024-08-31",
-  };
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("jwtToken");
-    if (storedToken === "mock-jwt-token") {
-      setSessions([mockSession]);
-      setCurrentSession(mockSession);
-      return;
-    }
-
     axios
       .get(`${apiUrl}/api/sessions`)
       .then((response) => {
@@ -54,7 +41,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         if (list.length > 0) {
           setSessions(list);
 
-          // Prefer date-active session; fall back to most recently created
           const now = new Date();
           const active = list.find((s) => {
             const start = new Date(s.startDate);
@@ -67,12 +53,8 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
           console.error("Unexpected response structure", response);
         }
       })
-      .catch(() => {
-        if (import.meta.env.DEV) {
-          console.warn("Sessions API unavailable, using mock session.");
-        }
-        setSessions([mockSession]);
-        setCurrentSession(mockSession);
+      .catch((error) => {
+        console.error("Error fetching sessions:", error);
       });
   }, [apiUrl]);
 
