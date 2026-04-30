@@ -27,13 +27,14 @@ import { DeleteModal } from "@/components/DeleteModal";
 import useFetch from "@/hooks/useFetch";
 import { SessionContext } from "@/contexts/SessionContext";
 import { toast } from "sonner";
+import { resolveClassName } from "@/lib/class-utils";
 
 function Subject() {
   const { classId } = useParams();
   const { currentSession } = useContext(SessionContext);
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  const classNameStr = (classId || "js1").toUpperCase();
+  const classNameStr = resolveClassName(classId || "JS1");
   const subjectsUrl = currentSession
     ? `/get-subject/${classNameStr}/${currentSession._id}`
     : null;
@@ -60,6 +61,7 @@ function Subject() {
   const [subjectName, setSubjectName] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState("");
   const itemsPerPage = 8;
+  const normalizedSubjectName = subjectName.trim();
 
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
@@ -80,19 +82,36 @@ function Subject() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentSession?._id) { toast.error("No active session"); return; }
+    if (!normalizedSubjectName) {
+      toast.error("Subject name is required");
+      return;
+    }
+    if (!selectedTeacher) {
+      toast.error("Please assign a teacher to this subject");
+      return;
+    }
     setLoading(true);
     try {
+      const payload = {
+        name: normalizedSubjectName,
+        subjectName: normalizedSubjectName,
+        classname: classNameStr,
+        className: classNameStr,
+        teacher: selectedTeacher,
+        teacherName: selectedTeacher,
+      };
+
       if (view === "add") {
         await axios.post(
           `${apiUrl}/api/create-subject/${currentSession._id}`,
-          { name: subjectName, classname: classNameStr, teacher: selectedTeacher },
+          payload,
           { headers: authHeaders() }
         );
         toast.success("Subject created successfully");
       } else if (view === "edit" && selectedSubject?._id) {
         await axios.put(
           `${apiUrl}/api/update-subject/${selectedSubject._id}`,
-          { name: subjectName, classname: classNameStr, teacher: selectedTeacher },
+          payload,
           { headers: authHeaders() }
         );
         toast.success("Subject updated successfully");
@@ -132,7 +151,7 @@ function Subject() {
 
   if (view === "add" || view === "edit") {
     return (
-      <div className="p-6 space-y-6">
+      <div className="space-y-6 p-4 sm:p-6">
         <FormShell
           title="Subject"
           type={view}
@@ -191,7 +210,7 @@ function Subject() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-row items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-[#004aaa]">Subjects</h2>
           <p className="text-sm text-slate-500 uppercase">
@@ -200,13 +219,14 @@ function Subject() {
         </div>
         <Button
           onClick={() => { setSubjectName(""); setSelectedTeacher(""); setView("add"); }}
-          className="bg-[#004aaa] gap-2 hover:bg-[#004aaa]/90">
+          className="w-full gap-2 bg-[#004aaa] hover:bg-[#004aaa]/90 sm:w-fit">
           <Plus className="h-4 w-4" /> Add new Subject
         </Button>
       </div>
 
       <Card className="border-none shadow-sm ring-1 ring-slate-200 overflow-hidden">
         <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-[#E8EBF3]">
               <TableRow>
@@ -276,6 +296,7 @@ function Subject() {
               )}
             </TableBody>
           </Table>
+          </div>
 
           <div className="border-t px-4">
             <DataTablePagination

@@ -2,6 +2,7 @@ import { useContext, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import useFetch from "@/hooks/useFetch";
 import { SessionContext } from "@/contexts/SessionContext";
+import { resolveClassName } from "@/lib/class-utils";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -24,15 +25,6 @@ type SubjectRecord = {
   className?: string;
 };
 
-const CLASS_LABELS: Record<string, string> = {
-  js1: "J.S.1",
-  js2: "J.S.2",
-  js3: "J.S.3",
-  ss1: "S.S.1",
-  ss2: "S.S.2",
-  ss3: "S.S.3",
-};
-
 type Props = {
   title?: string;
 };
@@ -40,10 +32,10 @@ type Props = {
 export default function SubjectsPage({ title = "Subjects" }: Props) {
   const { classId } = useParams();
   const { currentSession } = useContext(SessionContext);
-  const normalizedClassId = (classId || "js1").toLowerCase();
+  const resolvedClassName = resolveClassName(classId || "JS1");
   const { data, loading } = useFetch(
     currentSession
-      ? `/get-subject/${normalizedClassId.toUpperCase()}/${currentSession._id}`
+      ? `/get-subject/${encodeURIComponent(resolvedClassName)}/${currentSession._id}`
       : null,
   );
 
@@ -57,7 +49,7 @@ export default function SubjectsPage({ title = "Subjects" }: Props) {
       <div>
         <h2 className="text-2xl font-bold text-[#004aaa]">{title}</h2>
         <p className="text-sm uppercase text-slate-500">
-          {CLASS_LABELS[normalizedClassId] || normalizedClassId}
+          {resolvedClassName}
         </p>
       </div>
 
@@ -117,8 +109,7 @@ export default function SubjectsPage({ title = "Subjects" }: Props) {
                     <TableCell className="text-slate-600 uppercase font-semibold text-xs">
                       {subject.className ||
                         subject.classname ||
-                        CLASS_LABELS[normalizedClassId] ||
-                        normalizedClassId}
+                        resolvedClassName}
                     </TableCell>
                   </TableRow>
                 ))

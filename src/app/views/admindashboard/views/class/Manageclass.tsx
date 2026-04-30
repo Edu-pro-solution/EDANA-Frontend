@@ -49,6 +49,14 @@ export default function ManageClasses() {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentClasses = classes.slice(indexOfFirstItem, indexOfLastItem);
+  const normalizedClassName = form.name.trim().toUpperCase();
+
+  const hasDuplicateClassName = classes.some((item) => {
+    const existingName = String(item.name || "").trim().toUpperCase();
+    if (!existingName || existingName !== normalizedClassName) return false;
+    if (view === "edit" && selectedClass?._id && item._id === selectedClass._id) return false;
+    return true;
+  });
 
   const handleEdit = (item: any) => {
     setSelectedClass(item);
@@ -62,14 +70,27 @@ export default function ManageClasses() {
       toast.error("No active session");
       return;
     }
+    if (!normalizedClassName) {
+      toast.error("Class name is required");
+      return;
+    }
+    if (hasDuplicateClassName) {
+      toast.error(`Class "${form.name.trim()}" already exists in this session`);
+      return;
+    }
 
     setLoading(true);
     try {
+      const payload = {
+        name: form.name.trim(),
+        teacher: form.teacher.trim(),
+      };
+
       if (view === "add") {
-        await axios.post(`${apiUrl}/api/class`, { name: form.name, teacher: form.teacher, session: currentSession._id });
+        await axios.post(`${apiUrl}/api/class`, { ...payload, session: currentSession._id });
         toast.success("Class created successfully");
       } else if (view === "edit" && selectedClass?._id) {
-        await axios.put(`${apiUrl}/api/class/${selectedClass._id}`, { name: form.name, teacher: form.teacher });
+        await axios.put(`${apiUrl}/api/class/${selectedClass._id}`, payload);
         toast.success("Class updated successfully");
       }
 
@@ -79,7 +100,7 @@ export default function ManageClasses() {
       setForm({ name: "", teacher: "" });
     } catch (error) {
       console.error(error);
-      toast.error("Failed to save class");
+      toast.error(hasDuplicateClassName ? "Class already exists" : "Failed to save class");
     } finally {
       setLoading(false);
     }
@@ -105,7 +126,7 @@ export default function ManageClasses() {
 
   if (view === "add" || view === "edit") {
     return (
-      <div className="p-6 space-y-6">
+      <div className="space-y-6 p-4 sm:p-6">
         <FormShell
           title="Class"
           type={view}
@@ -124,6 +145,9 @@ export default function ManageClasses() {
               placeholder="e.g. JS1 or SS3"
               required
             />
+            {normalizedClassName && hasDuplicateClassName && (
+              <p className="text-xs font-medium text-red-600">This class name already exists in the current session.</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -154,7 +178,7 @@ export default function ManageClasses() {
             setSelectedClass(null);
             setView("add");
           }}
-          className="w-fit gap-2 bg-primary hover:bg-primary/90"
+          className="w-full gap-2 bg-primary hover:bg-primary/90 sm:w-fit"
         >
           <Plus className="h-4 w-4" />
           Add new Class
@@ -163,6 +187,7 @@ export default function ManageClasses() {
 
       <Card className="overflow-hidden border border-black shadow-sm">
         <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-primary/10">
               <TableRow className="hover:bg-transparent">
@@ -226,6 +251,7 @@ export default function ManageClasses() {
               )}
             </TableBody>
           </Table>
+          </div>
 
           <div className="border-t border-black px-4">
             <DataTablePagination

@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SessionContext } from "@/contexts/SessionContext";
 import useFetch from "@/hooks/useFetch";
 import logo from "@/assets/logo.png";
+import { toClassRouteParam } from "@/lib/class-utils";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
@@ -25,7 +26,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 // ── helpers ──────────────────────────────────────────────────────────────────
 const className = (c: any) => String(c?.name || c?.className || "");
 // Use name string (not _id) — backend routes expect class name, e.g. "JS1"
-const classId   = (c: any) => String(c?.name || c?.className || "");
+const classId   = (c: any) => toClassRouteParam(c?.name || c?.className || "");
 
 // ── nav builders ─────────────────────────────────────────────────────────────
 function buildAdminNav(classes: any[]) {
