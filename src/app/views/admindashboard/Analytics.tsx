@@ -26,7 +26,7 @@ export default function Dashboard() {
   const { data: rawTeachers } = useFetch(sessionId ? `/users/teacher/${sessionId}` : null);
   const { data: rawParents } = useFetch(sessionId ? `/users/parent/${sessionId}` : null);
   const { data: notices } = useFetch(sessionId ? `/get-all-notices/${sessionId}` : null);
-
+const { data: rawAdmins } = useFetch(sessionId ? `/users/admin/${sessionId}` : null);
   const stats = useMemo<StatCard[]>(
     () => [
       {
@@ -51,12 +51,19 @@ export default function Dashboard() {
         href: "/parents",
       },
       {
-        title: "Notice Board",
-        subtitle: "active notices",
-        value: countItems(notices),
-        icon: Bell,
-        href: "/notices",
-      },
+  title: "Admins",
+  subtitle: "total admins",
+  value: countItems(rawAdmins),
+  icon: Bell,
+  href: "/admin",
+},
+      // {
+      //   title: "Notice Board",
+      //   subtitle: "active notices",
+      //   value: countItems(notices),
+      //   icon: Bell,
+      //   href: "/notices",
+      // },
     ],
     [notices, rawParents, rawStudents, rawTeachers]
   );
