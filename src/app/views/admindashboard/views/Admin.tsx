@@ -48,6 +48,10 @@ const Admin = () => {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
+  const normalizeEmail = (value: string) => value.trim().toLowerCase();
+  const normalizePhone = (value: string) => value.replace(/\D/g, "");
+  const normalizeName = (value: string) => value.trim().replace(/\s+/g, " ");
+
   const handleEdit = (admin: any) => {
     setSelectedAdmin(admin);
     setForm({
@@ -70,14 +74,50 @@ const Admin = () => {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentSession?._id) { toast.error("No active session"); return; }
+
+    const normalizedName = normalizeName(form.name);
+    const normalizedEmail = normalizeEmail(form.email);
+    const normalizedPhone = normalizePhone(form.phone);
+    const normalizedAddress = form.address.trim();
+
+    if (!normalizedName) {
+      toast.error("Full name is required");
+      return;
+    }
+    if (!normalizedEmail) {
+      toast.error("Email is required");
+      return;
+    }
+    if (view === "add" && !form.password.trim()) {
+      toast.error("Password is required");
+      return;
+    }
+
+    const hasDuplicateInSession = admins.some((admin: any) => {
+      if (view === "edit" && admin?._id === selectedAdmin?._id) return false;
+      const adminName = normalizeName(admin?.username || admin?.name || "");
+      const adminEmail = normalizeEmail(admin?.email || "");
+      const adminPhone = normalizePhone(String(admin?.phone || ""));
+      return (
+        (adminName && adminName === normalizedName) ||
+        (adminEmail && adminEmail === normalizedEmail) ||
+        (adminPhone && normalizedPhone && adminPhone === normalizedPhone)
+      );
+    });
+
+    if (hasDuplicateInSession) {
+      toast.error("An admin with the same name, email, or phone already exists in this session");
+      return;
+    }
+
     setLoading(true);
     try {
       if (view === "add") {
         await axios.post(`${apiUrl}/api/register`, {
-          username: form.name,
-          email: form.email,
-          phone: form.phone,
-          address: form.address,
+          username: normalizedName,
+          email: normalizedEmail,
+          phone: normalizedPhone,
+          address: normalizedAddress,
           password: form.password,
           role: "admin",
           sessionId: currentSession._id,
@@ -85,10 +125,10 @@ const Admin = () => {
         toast.success("Admin created successfully");
       } else if (view === "edit" && selectedAdmin?._id) {
         await axios.put(`${apiUrl}/api/admin/${selectedAdmin._id}`, {
-          username: form.name,
-          email: form.email,
-          phone: form.phone,
-          address: form.address,
+          username: normalizedName,
+          email: normalizedEmail,
+          phone: normalizedPhone,
+          address: normalizedAddress,
           ...(form.password ? { password: form.password } : {}),
         }, { headers: authHeaders() });
         toast.success("Admin updated successfully");
@@ -97,8 +137,14 @@ const Admin = () => {
       setView("list");
       setSelectedAdmin(null);
       setForm({ name: "", email: "", phone: "", address: "", password: "" });
-    } catch {
-      toast.error(view === "add" ? "Failed to create admin" : "Failed to update admin");
+    } catch (error) {
+      const message =
+        axios.isAxiosError(error)
+          ? error.response?.data?.error ||
+            error.response?.data?.message ||
+            `Request failed with status ${error.response?.status ?? "unknown"}`
+          : null;
+      toast.error(message || (view === "add" ? "Failed to create admin" : "Failed to update admin"));
     } finally {
       setLoading(false);
     }
@@ -152,7 +198,7 @@ const Admin = () => {
             <Label className="text-[10px] font-bold uppercase text-slate-400">Phone Number</Label>
             <Input
               value={form.phone}
-              onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+              onChange={(e) => setForm(f => ({ ...f, phone: e.target.value.replace(/[^\d]/g, "") }))}
               placeholder="080..."
             />
           </div>
